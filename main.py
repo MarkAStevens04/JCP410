@@ -47,19 +47,19 @@ def dSdx(x, S):
     return [v,
             -v**2 + np.sin(x)]
 
-x_0 = 0
+x_0 = 2
 v_0 = 5
 S_0 = (x_0, v_0)
 
 
 def dSdt(t, S):
     x1, x2 = S
-    k1 = 12
-    k2 = 2
-    return [-x1 - k1*x2,
+    k1 = 2
+    k2 = -1.9
+    return [(-1 * x1) - (k1*x2),
             k2*x1 - x1**2 - x2]
-x1_0 = 0.1
-x2_0 = 0
+x1_0 = 1
+x2_0 = 1
 S_0 = (x1_0, x2_0)
 
 
@@ -69,7 +69,7 @@ S_0 = (x1_0, x2_0)
 if __name__ == "__main__":
     # setup what x will be!
     # x = np.linspace(0, 1, 100)
-    t = np.linspace(0, 1, 100)
+    t = np.linspace(0, 5, 100)
 
 
     # ODE Int more oldschool, uses Fortran
@@ -79,9 +79,7 @@ if __name__ == "__main__":
     # sol_m2 = solve_ivp(dvdt, t_span=(0, max(t)), y0=[v0], t_eval=t)
 
     # sol = odeint(dSdx, y0=S_0, t=x, tfirst=True)
-    sol = solve_ivp(dSdt, t_span=(0, max(t)), y0=S_0, t_eval=t)
-
-    print(sol.y)
+    sol = solve_ivp(dSdt, t_span=(0, max(t)), y0=S_0, t_eval=t, method='DOP853', rtol=1e-10, atol=1e-13)
 
     x1_sol = sol.y[0]
     x2_sol = sol.y[1]
