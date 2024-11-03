@@ -1,8 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
+print(f'matplotlib and np imported')
 import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
+print(f'scipy imported')
+import math
+print(f'imported')
 
 # following tutorial
 # https://www.youtube.com/watch?v=MM3cBamj1Ms
@@ -11,65 +15,231 @@ from scipy.integrate import solve_ivp
 # https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter22.06-Python-ODE-Solvers.html
 
 
-
-# coupled first_order ODE
-#y1' = y1 + y2^2 + 3x
-#y2' = 3y1 + y2^3 - cos(x)
-# y1(0) = (0)
-# y2(0) = 0
-# x is our independent variable (kinda like t)
-
-# S = (y1, y2)
-# dS/dx = (dy1/dx, dy2/dx)
-# just want our vector from its derivative!
-
-# def dSdx(x, S):
-#     y1, y2 = S
-#     return [y1 + y2**2 + 3*x,
-#             3*y1 + y2**3 - np.cos(x)]
-# y1_0 = 0
-# y2_0 = 0
-# S_0 = (y1_0, y2_0)
+def dYdt(t, Y):
+    m1 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[0] * (p[2] + p[3])
+    p1 = Y[0] * p[1] - Y[1] * p[3]
+    m2 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[1] ** p[4]) - Y[2] * (p[2] + p[3])
+    p2 = Y[2] * p[1] - Y[3] * p[3]
+    m3 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[3] ** p[4]) - Y[4] * (p[2] + p[3])
+    p3 = Y[4] * p[1] - Y[5] * p[3]
+    return [m1, p1, m2, p2, m3, p3]
 
 
-# ----------
+beta_p = 1 # protein elimination rate
+beta_m = 0.1 * (25 / math.log(2)) # mRNA elimination rate (25min protein half-life)
 
-# Second Order ODE
-# say x'' = -x'^2 + sin(x)
-#
-# We will convert 2nd order ODE to first order!
-# x' = v
-# v' = -v^2 + sin(x)
-# boom! we've got two equations now!
-# We know S = (x', v') = (v, -v^2 + sin(x))
-def dSdx(x, S):
-    x, v = S
-    return [v,
-            -v**2 + np.sin(x)]
+lambda_m = 4.1 * (25 / math.log(2)) # max transcription rate constant
+lambda_p = 1.8 * (25 / math.log(2)) # Translation rate constant
 
-x_0 = 2
-v_0 = 5
-S_0 = (x_0, v_0)
+h = 2 # Hill coefficient of cooperativity
+K = 7 # Repression threshold (when 1/2 of all repressors are bound)
+
+p = [lambda_m, lambda_p, beta_m, beta_p, h, K] # Parameter vector for ODE solver
+x0 = [10, 0, 0, 0, 0, 0] # [m1, P1, m2, P2, m3, P3]
 
 
-def dSdt(t, S):
-    x1, x2 = S
-    k1 = 2
-    k2 = -1.9
-    return [(-1 * x1) - (k1*x2),
-            k2*x1 - x1**2 - x2]
-x1_0 = 1
-x2_0 = 1
-S_0 = (x1_0, x2_0)
+# reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
+stoich_mat=[
+    [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+
+# Rows: m1, pf1, m2, pf2, m3, pf3
+# Shape: (6 x 12) 6 species, 12 reactions.
+stoich_mat = np.array(stoich_mat)
+n = 1000000
 
 
 
+
+def calc_rate(x):
+    """
+    Calculates the rates of rxns using current quantities of each species
+    :param x: [m1, P1, m2, P2, m3, P3] (array of molecule numbers)
+    :return:
+    """
+    # This is where you put in your RVF!
+    # return a 1x12 matrix
+    # print(f'running rvf {x}')
+    # print(f'x at 0: {x[0]}')
+    # POSSIBLE ERROR:
+    # deg_m might be (beta_m * x[]) NOT (beta_m + beta_p) * x[]
+    prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
+    deg_m1 = (beta_m + beta_p) * x[0]
+
+    prod_p1 = lambda_p * x[0]
+    deg_p1 = beta_p * x[1]
+
+    prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h)
+    deg_m2 = (beta_m + beta_p) * x[2]
+
+    prod_p2 = lambda_p * x[2]
+    deg_p2 = beta_p * x[3]
+
+    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h)
+    deg_m3 = (beta_m + beta_p) * x[4]
+
+    prod_p3 = lambda_p * x[4]
+    deg_p3 = beta_p * x[5]
+    return [prod_m1, deg_m1, prod_p1, deg_p1, prod_m2, deg_m2, prod_p2, deg_p2, prod_m3, deg_m3, prod_p3, deg_p3]
+
+
+
+
+
+
+
+def full_gillespie(x0, rvf, stoich_mat, n):
+    """
+
+    :param x0: Column vector of initial conditions
+    :param rvf: a rate-value function. Should be a function which takes array as input.
+    :param stoich_mat: Matrix storing changes to each reaction
+    :param n: Number of iterations
+    :return:
+    """
+    print(f'running full gillespie')
+
+    # Setup matrix to store our output data.
+    x = np.hstack([x0, np.zeros((x0.size, n))])
+    # Matrix to store times
+    t = np.zeros((1, n+1))
+    # Matrix to store time intervals
+    tau = np.zeros((1, n))
+
+    for i in range(n):
+        print(i)
+        lamd = rvf(x[:, i])
+        lamd_tot = np.sum(lamd)
+        r_t = np.random.random()
+        # Calculate time to next interval
+        T = -1 * math.log(r_t) / lamd_tot
+        # print(f'T: {T}')
+
+        # normalize lamd btwn 0 and 1
+        lamd = lamd/lamd_tot
+        # make lamd a cumulative sum ([0.7, 0.1, 0.2] -> [0.7, 0.8, 1.0])
+        # Find which reaction rate has been picked!
+        lamd = np.cumsum(lamd)
+        # print(f'lamd: {lamd}')
+        r = np.random.random()
+        # print(f'r: {r}')
+        I = 0
+        while lamd[I] < r:
+            I += 1
+
+        # Update our time!
+        t[0, i+1] = t[0, i] + T
+        # Update our stoich.
+        # print(f'stoich mat: {stoich_mat}')
+        # print(f'selected: {stoich_mat[:, I]}')
+        # print(f'pre: {x}')
+        x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
+        tau[0, i] = T
+        # print(f'post: {x}')
+    return t, x, tau
+
+
+
+
+def resample(t, x, t_mean):
+    """
+    We "resample" our data so that performing further analysis is easier.
+    Our timesteps (tau) are not constant, but we need constant time intervals
+    to calculate the autocorrelation. So, we will resample with constant timesteps!
+
+    :param t: Original time vector
+    :param x: Original amounts of reactants
+    :param t_mean: Mean time step size
+    :return:
+    """
+    # Make new time vector!
+    # Expressions are equivalent, however second provides more stability with np.arange
+    # rt = np.arange(0, t[0, -1], t_mean)
+    rt = np.arange(0, math.floor(t[-1] / t_mean)) * t_mean
+    rx = np.zeros((x.shape[0], rt.shape[0]))
+    # initialize with x initial conditions
+    rx[:, 0] = x[:, 0]
+
+    I = 0
+    for i in range(1, rt.shape[0]):
+        # Essentially, find the index with the closest value to our desired.
+        while t[I] < rt[i]:
+            I += 1
+        rx[:, i] = x[:, I-1]
+
+    return rt, rx
+
+
+
+# def autocorrelate(rt, rx):
+#     """
+#     Determines the autocorrelation of our concentrations and times.
+#     :param rt:
+#     :param rx:
+#     :return:
+#     """
+#     # rx[0, :] = rx[0, :] - np.mean(rx[0, :])
+#     # print(f'rx: {rx}')
+#     result = np.correlate(rx[0, :], rx[0, :], mode='full')
+#     return result[result.size//2:]
+
+
+def autocorrelate(rt, rx):
+    """
+    Determines the autocorrelation of our concentrations and times.
+    :param rt:
+    :param rx:
+    :return:
+    """
+    n_points = rx.shape[1]
+    n_species = rx.shape[0]
+
+    rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
+    ac = np.zeros(2 * n_points, dtype=complex)
+
+
+
+    for i in range(n_species):
+        # for every species,,,
+        frx = np.fft.fft(rx[i, :], n=2 * n_points)
+        power_spectrum = frx * np.conj(frx)
+
+        ac += np.fft.ifft(power_spectrum)
+
+    ac = ac / n_species
+    ac = np.fft.fftshift(ac)
+    divisor = np.concatenate(([1], np.arange(1, n_points), np.arange(n_points, 0, -1)))
+    ac = ac / divisor / np.std(rx) ** 2
+    ac = np.fft.fftshift(ac)
+
+    ac_half = ac[:ac.size//2]
+    return ac_half
+
+
+
+
+
+
+def do_samples(n_samples):
+    pass
+
+
+
+
+x0_g = np.zeros((6, 1))
+x0_g[0, 0] = 10
+print(f'x0_g: {x0_g}')
 
 
 if __name__ == "__main__":
+    print(f'inside main')
     # setup what x will be!
     # x = np.linspace(0, 1, 100)
-    t = np.linspace(0, 5, 100)
+    t = np.linspace(0, 50, 1000)
 
 
     # ODE Int more oldschool, uses Fortran
@@ -79,10 +249,15 @@ if __name__ == "__main__":
     # sol_m2 = solve_ivp(dvdt, t_span=(0, max(t)), y0=[v0], t_eval=t)
 
     # sol = odeint(dSdx, y0=S_0, t=x, tfirst=True)
-    sol = solve_ivp(dSdt, t_span=(0, max(t)), y0=S_0, t_eval=t, method='DOP853', rtol=1e-10, atol=1e-13)
+    sol = solve_ivp(dYdt, t_span=(0, max(t)), y0=x0, t_eval=t)
+    # sol = solve_ivp(dSdt, t_span=(0, max(t)), y0=S_0, t_eval=t, method='DOP853', rtol=1e-10, atol=1e-13)
 
-    x1_sol = sol.y[0]
-    x2_sol = sol.y[1]
+    # [m1, P1, m2, P2, m3, P3]
+
+
+    p1_sol = sol.y[1]
+    p2_sol = sol.y[3]
+    p3_sol = sol.y[5]
     t = sol.t
 
     # first parameter is velocity
@@ -90,11 +265,40 @@ if __name__ == "__main__":
 
     print(sol)
 
-    # v_sol_m1 = sol_m1.T[0]
-    # v_sol_m2 = sol_m2.y[0]
-
-    plt.plot(t, x1_sol)
-    plt.plot(t, x2_sol)
+    # plt.plot(t, p1_sol)
+    # plt.plot(t, p2_sol)
+    # plt.plot(t, p3_sol)
     # plt.ylabel('$v(t)$', fontsize=22)
     # plt.xlabel('$t$', fontsize=22)
+
+    # plt.show()
+
+    print(f'')
+    print(f'down here')
+    do_samples(5)
+    t, x, tau = full_gillespie(x0_g, calc_rate, stoich_mat, 100000)
+    rt, rx = resample(t[0, :], x, tau.mean())
+
+    autoc = autocorrelate(rt, rx)
+    print(f'autoc shape: {autoc.shape}')
+    print(f'auto correlation: {autoc}')
+
+
+    p1_g = x[1, :]
+    # p2_g = x[3, :]
+    # p3_g = x[5, :]
+
+    # p1_r = rx[1, :]
+    t = t[0, :]
+    plt.plot(rt, autoc)
+
+    # # print(f'p3_g: {p3_g}')
+    # # print(f't: {t}')
+    # plt.plot(t, p1_g)
+    # plt.plot(t, p2_g)
+    # plt.plot(t, p3_g)
+
+    # plt.plot(rt, p1_r)
+
     plt.show()
+
