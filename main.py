@@ -4,6 +4,7 @@ print(f'matplotlib and np imported')
 import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
+from scipy.signal import find_peaks
 print(f'scipy imported')
 import math
 print(f'imported')
@@ -202,7 +203,6 @@ def autocorrelate(rt, rx):
     ac = np.zeros(2 * n_points, dtype=complex)
 
 
-
     for i in range(n_species):
         # for every species,,,
         frx = np.fft.fft(rx[i, :], n=2 * n_points)
@@ -217,6 +217,7 @@ def autocorrelate(rt, rx):
     ac = np.fft.fftshift(ac)
 
     ac_half = ac[:ac.size//2]
+    ac_half = np.real(ac_half)
     return ac_half
 
 
@@ -280,25 +281,51 @@ if __name__ == "__main__":
     rt, rx = resample(t[0, :], x, tau.mean())
 
     autoc = autocorrelate(rt, rx)
+    print(f'generated autoc')
+
     print(f'autoc shape: {autoc.shape}')
     print(f'auto correlation: {autoc}')
+    [peaks, locs] = find_peaks(autoc[10:])
+    print(f'return: {find_peaks(autoc[10:])}')
+    # [peaks, locs] = find_peaks(np.zeros(10))
+    print(f'peaks: {peaks}')
+    print(f'locs: {locs}')
+    if len(peaks) == 0:
+        # Unable to find any peaks
+        print(f'no peaks :(')
+        period = 0
+        precision = 0
+    else:
+        # Found some peaks!
+        print(f'peaks here')
+        print(f'peaks[0]: {peaks[0]}')
+        period = rt[peaks[0]]
+        precision = autoc[peaks[0]]
+
+    print(f'period: {period}')
+    print(f'precision: {precision}')
+
 
 
     p1_g = x[1, :]
     # p2_g = x[3, :]
     # p3_g = x[5, :]
 
-    # p1_r = rx[1, :]
+    p1_r = rx[1, :]
     t = t[0, :]
     plt.plot(rt, autoc)
 
     # # print(f'p3_g: {p3_g}')
     # # print(f't: {t}')
     # plt.plot(t, p1_g)
+
     # plt.plot(t, p2_g)
     # plt.plot(t, p3_g)
 
     # plt.plot(rt, p1_r)
+    # # Peaks will be slightly offset. Peaks is the period after 1 oscillation,
+    # # it might not start at the correct position!
+    # plt.scatter(rt[peaks], rx[1, peaks])
 
     plt.show()
 
