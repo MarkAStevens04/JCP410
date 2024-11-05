@@ -285,8 +285,9 @@ if __name__ == "__main__":
 
     print(f'autoc shape: {autoc.shape}')
     print(f'auto correlation: {autoc}')
-    [peaks, locs] = find_peaks(autoc[10:])
-    print(f'return: {find_peaks(autoc[10:])}')
+    offset = 100
+    [peaks, locs] = find_peaks(autoc[offset:])
+    print(f'return: {find_peaks(autoc[offset:])}')
     # [peaks, locs] = find_peaks(np.zeros(10))
     print(f'peaks: {peaks}')
     print(f'locs: {locs}')
@@ -299,6 +300,7 @@ if __name__ == "__main__":
         # Found some peaks!
         print(f'peaks here')
         print(f'peaks[0]: {peaks[0]}')
+        # print(f'periods: {rt[peaks]}')
         period = rt[peaks[0]]
         precision = autoc[peaks[0]]
 
