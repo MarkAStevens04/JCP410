@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
+# pip install numpy
+# pip install matplotlib
+# python -m pip install scipy
+#
 
 # following tutorial
 # https://www.youtube.com/watch?v=MM3cBamj1Ms
