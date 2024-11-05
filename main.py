@@ -26,17 +26,7 @@ def dYdt(t, Y):
     return [m1, p1, m2, p2, m3, p3]
 
 
-beta_p = 1 # protein elimination rate
-beta_m = 0.1 * (25 / math.log(2)) # mRNA elimination rate (25min protein half-life)
 
-lambda_m = 4.1 * (25 / math.log(2)) # max transcription rate constant
-lambda_p = 1.8 * (25 / math.log(2)) # Translation rate constant
-
-h = 2 # Hill coefficient of cooperativity
-K = 7 # Repression threshold (when 1/2 of all repressors are bound)
-
-p = [lambda_m, lambda_p, beta_m, beta_p, h, K] # Parameter vector for ODE solver
-x0 = [10, 0, 0, 0, 0, 0] # [m1, P1, m2, P2, m3, P3]
 
 
 # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
@@ -56,10 +46,11 @@ n = 1000000
 
 
 
-def calc_rate(x):
+def calc_rate(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3] (array of molecule numbers)
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K] Parameter vector for ODE solver
     :return:
     """
     # This is where you put in your RVF!
@@ -68,6 +59,16 @@ def calc_rate(x):
     # print(f'x at 0: {x[0]}')
     # POSSIBLE ERROR:
     # deg_m might be (beta_m * x[]) NOT (beta_m + beta_p) * x[]
+    lambda_m = p[0]
+    lambda_p = p[1]
+    beta_m = p[2]
+    beta_p = p[3]
+    h = p[4]
+    K = p[5]
+
+
+
+
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
     deg_m1 = (beta_m + beta_p) * x[0]
 
@@ -91,9 +92,7 @@ def calc_rate(x):
 
 
 
-
-
-def full_gillespie(x0, rvf, stoich_mat, n):
+def full_gillespie(rvf, stoich_mat, p, n):
     """
 
     :param x0: Column vector of initial conditions
@@ -102,7 +101,13 @@ def full_gillespie(x0, rvf, stoich_mat, n):
     :param n: Number of iterations
     :return:
     """
-    print(f'running full gillespie')
+    x0 = np.zeros((6, 1))
+    x0[0, 0] = 10
+    # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
+    # print(f'x0: {x0}')
+
+
+    # print(f'running full gillespie')
 
     # Setup matrix to store our output data.
     x = np.hstack([x0, np.zeros((x0.size, n))])
@@ -112,8 +117,8 @@ def full_gillespie(x0, rvf, stoich_mat, n):
     tau = np.zeros((1, n))
 
     for i in range(n):
-        print(i)
-        lamd = rvf(x[:, i])
+        # print(i)
+        lamd = rvf(x[:, i], p)
         lamd_tot = np.sum(lamd)
         r_t = np.random.random()
         # Calculate time to next interval
@@ -225,46 +230,106 @@ def autocorrelate(rt, rx):
 
 
 
-def do_samples(n_samples):
-    pass
+def single_pass(Beta, alpha, Hill, num_iterations):
+    """
+    Performs a single pass of Gillespie Simulation!
+    :param Beta:
+    :param alpha:
+    :return:
+    """
+    beta_p = 1  # protein elimination rate
+    # Implicity math.log is ln
+    # beta_m = 0.1 * (25 / math.log(2))
+    beta_m = 1 / Beta
+    h = 2  # Hill coefficient of cooperativity
+    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
+
+    c = 4.8/1.8
+    lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c)
+    lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c)
+    print(f'lambda_p: {lambda_p}')
+    print(f'lambda_m: {lambda_m}')
+
+
+
+    # lambda_m = 4.1 * (25 / math.log(2))  # max transcription rate constant
+    # lambda_p = 1.8 * (25 / math.log(2))  # Translation rate constant
+
+    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
+
+    # alpha = lambda_p * lambda_m / (beta_m * beta_p * k)
+
+    # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
+    stoich_mat = [
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+
+    # Rows: m1, pf1, m2, pf2, m3, pf3
+    # Shape: (6 x 12) 6 species, 12 reactions.
+    stoich_mat = np.array(stoich_mat)
+
+    x0_g = np.zeros((6, 1))
+    x0_g[0, 0] = 10
+
+
+    # update calc_rate to take our constants as an input parameter
+
+    t, x, tau = full_gillespie(calc_rate, stoich_mat, p, num_iterations)
+    rt, rx = resample(t[0, :], x, tau.mean())
+
+    autoc = autocorrelate(rt, rx)
+    offset = 100
+    [peaks, locs] = find_peaks(autoc[offset:])
+
+    if len(peaks) == 0:
+        # Unable to find any peaks
+        print(f'no peaks :(')
+        period = 0
+        precision = 0
+    else:
+        # Found some peaks!
+        # print(f'periods: {rt[peaks]}')
+        period = rt[peaks[0]]
+        precision = autoc[peaks[0]]
+
+
+    return rt, rx, peaks, autoc
 
 
 
 
-x0_g = np.zeros((6, 1))
-x0_g[0, 0] = 10
-print(f'x0_g: {x0_g}')
+
+
+
 
 
 if __name__ == "__main__":
     print(f'inside main')
     # setup what x will be!
     # x = np.linspace(0, 1, 100)
+    # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
     t = np.linspace(0, 50, 1000)
 
 
     # ODE Int more oldschool, uses Fortran
     # solve_ivp more flexible
 
-    # sol_m1 = odeint(dvdt, y0=v0, t=t, tfirst=True)
-    # sol_m2 = solve_ivp(dvdt, t_span=(0, max(t)), y0=[v0], t_eval=t)
-
     # sol = odeint(dSdx, y0=S_0, t=x, tfirst=True)
-    sol = solve_ivp(dYdt, t_span=(0, max(t)), y0=x0, t_eval=t)
-    # sol = solve_ivp(dSdt, t_span=(0, max(t)), y0=S_0, t_eval=t, method='DOP853', rtol=1e-10, atol=1e-13)
-
     # [m1, P1, m2, P2, m3, P3]
 
-
-    p1_sol = sol.y[1]
-    p2_sol = sol.y[3]
-    p3_sol = sol.y[5]
-    t = sol.t
+    # p1_sol = sol.y[1]
+    # p2_sol = sol.y[3]
+    # p3_sol = sol.y[5]
+    # t = sol.t
 
     # first parameter is velocity
     # print(sol_m1.T[0])
 
-    print(sol)
+    # print(sol)
 
     # plt.plot(t, p1_sol)
     # plt.plot(t, p2_sol)
@@ -276,8 +341,20 @@ if __name__ == "__main__":
 
     print(f'')
     print(f'down here')
-    do_samples(5)
-    t, x, tau = full_gillespie(x0_g, calc_rate, stoich_mat, 100000)
+    # --------------------- Parameters for Gillespie ------------------------
+    beta_p = 1  # protein elimination rate
+    beta_m = 0.1 * (25 / math.log(2))  # mRNA elimination rate (25min protein half-life)
+
+    lambda_m = 4.1 * (25 / math.log(2))  # max transcription rate constant
+    lambda_p = 1.8 * (25 / math.log(2))  # Translation rate constant
+
+    h = 2  # Hill coefficient of cooperativity
+    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
+    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
+    # ---------------------------------------------------------------------
+
+
+    t, x, tau = full_gillespie(calc_rate, stoich_mat, p, 100000)
     rt, rx = resample(t[0, :], x, tau.mean())
 
     autoc = autocorrelate(rt, rx)
@@ -313,9 +390,12 @@ if __name__ == "__main__":
     # p2_g = x[3, :]
     # p3_g = x[5, :]
 
+    # - Autocorrelation -
     p1_r = rx[1, :]
     t = t[0, :]
-    plt.plot(rt, autoc)
+    # plt.plot(rt, autoc)
+
+
 
     # # print(f'p3_g: {p3_g}')
     # # print(f't: {t}')
@@ -328,6 +408,15 @@ if __name__ == "__main__":
     # # Peaks will be slightly offset. Peaks is the period after 1 oscillation,
     # # it might not start at the correct position!
     # plt.scatter(rt[peaks], rx[1, peaks])
+
+    # - Display concentrations of Gillespie -
+    p1_r = rx[1, :]
+    p2_r = rx[3, :]
+    p3_r = rx[5, :]
+
+    plt.plot(rt, p1_r)
+    plt.plot(rt, p2_r)
+    plt.plot(rt, p3_r)
 
     plt.show()
 
