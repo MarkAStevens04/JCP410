@@ -1,17 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-print(f'matplotlib and np imported')
 import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
-print(f'scipy imported')
 import math
-print(f'imported')
 import main
 import os
 import datetime
 import h5py
+# pip install h5py
 
 
 # Beta should go from 1 to 0.01
@@ -25,7 +23,7 @@ def open_directories(a, b):
     :param beta:
     :return:
     """
-    dir_name = f'Trials/Test_1/Trial {str(b).replace('.', '-')} {str(a).replace('.', '-')}'
+    dir_name = f'Trials/Test_1/Trial {str(b).replace(".", "-")} {str(a).replace(".", "-")}'
     try:
         os.mkdir(dir_name)
         print(f"Directory '{dir_name}' created successfully.")
@@ -51,7 +49,11 @@ def read_data():
         concentration_data = group['trial_0_concentrations']
 
         print(f'period data: {period_data}')
+        print(f'precision data: {precision_data}')
         print(f'names: {g_names}')
+        print(f'avg period: {np.average(period_data)}')
+        print(f'avg precision: {np.average(precision_data)}')
+
 
 
 
@@ -62,7 +64,7 @@ def grid_run():
     """
     betas = [10 ** (-1 * (i / 5)) for i in range(10 + 1)]
     alphas = [10 ** (i / 5) for i in range(10 + 1)]
-    trials_per_bin = 3
+    trials_per_bin = 10
 
     with h5py.File('experimental_results.h5', 'w') as f:
         for b in betas:
@@ -83,14 +85,16 @@ def grid_run():
                         precision = 0
                     else:
                         # Found some peaks!
-                        print(f'periods: {rt[peaks]}')
+                        # print(f'periods: {rt[peaks]}')
                         period = rt[peaks[0]]
                         precision = autoc[peaks[0]]
                     periods.append(period)
                     precisions.append(precision)
+                    print(f'trial {trial} {group_name}')
 
                 group.create_dataset('period', data=periods)
                 group.create_dataset('precision', data=precisions)
+
 
 
 
@@ -123,35 +127,35 @@ def grid_run():
 
 
 if __name__ == "__main__":
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 1, 100000)
-
-    if len(peaks) == 0:
-        # Unable to find any peaks
-        print(f'no peaks :(')
-        period = 0
-        precision = 0
-    else:
-        # Found some peaks!
-        print(f'periods: {rt[peaks]}')
-        period = rt[peaks[0]]
-        precision = autoc[peaks[0]]
-
-    print(f'period: {period}')
-    print(f'precision: {precision}')
-
-    # - Regular Graph -
-    p1_r = rx[1, :]
-    p2_r = rx[3, :]
-    p3_r = rx[5, :]
-
-    plt.plot(rt, p1_r)
-    plt.plot(rt, p2_r)
-    plt.plot(rt, p3_r)
+    # rt, rx, peaks, autoc = main.single_pass(0.277, 380, 1, 100000)
+    #
+    # if len(peaks) == 0:
+    #     # Unable to find any peaks
+    #     print(f'no peaks :(')
+    #     period = 0
+    #     precision = 0
+    # else:
+    #     # Found some peaks!
+    #     print(f'periods: {rt[peaks]}')
+    #     period = rt[peaks[0]]
+    #     precision = autoc[peaks[0]]
+    #
+    # print(f'period: {period}')
+    # print(f'precision: {precision}')
+    #
+    # # - Regular Graph -
+    # p1_r = rx[1, :]
+    # p2_r = rx[3, :]
+    # p3_r = rx[5, :]
+    #
+    # plt.plot(rt, p1_r)
+    # plt.plot(rt, p2_r)
+    # plt.plot(rt, p3_r)
 
     # - Autocorrelation graph -
     # plt.plot(rt, autoc)
 
     # plt.show()
 
-    read_data()
-    # grid_run()
+    # read_data()
+    grid_run()

@@ -1,13 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-print(f'matplotlib and np imported')
 import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
-print(f'scipy imported')
 import math
-print(f'imported')
 
 # following tutorial
 # https://www.youtube.com/watch?v=MM3cBamj1Ms
@@ -247,8 +244,8 @@ def single_pass(Beta, alpha, Hill, num_iterations):
     c = 4.8/1.8
     lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c)
     lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c)
-    print(f'lambda_p: {lambda_p}')
-    print(f'lambda_m: {lambda_m}')
+    # print(f'lambda_p: {lambda_p}')
+    # print(f'lambda_m: {lambda_m}')
 
 
 
