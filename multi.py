@@ -9,6 +9,8 @@ import main
 import os
 import datetime
 import h5py
+import multiprocessing
+from multiprocessing import Process
 # pip install h5py
 
 
@@ -56,6 +58,28 @@ def read_data():
 
 
 
+def thread_run(trial_num,alpha,beta,group,queue):
+    """
+    Runs a single thread of parameters
+    """
+    rt, rx, peaks, autoc = main.single_pass(beta, alpha, 1, 100000)
+    group.create_dataset(f'trial_{trial_num}_concentrations', data=rx)
+    if len(peaks) == 0:
+        # Unable to find any peaks
+        print(f'no peaks :(')
+        period = 0
+        precision = 0
+    else:
+        # Found some peaks!
+        # print(f'periods: {rt[peaks]}')
+        period = rt[peaks[0]]
+        precision = autoc[peaks[0]]
+    queue.put((period,precision))
+    print(f' - trial {trial_num} complete!')
+
+
+
+
 
 def grid_run():
     """
@@ -64,7 +88,7 @@ def grid_run():
     """
     betas = [10 ** (-1 * (i / 5)) for i in range(10 + 1)]
     alphas = [10 ** (i / 5) for i in range(10 + 1)]
-    trials_per_bin = 10
+    trials_per_bin = 1000
 
     with h5py.File('experimental_results.h5', 'w') as f:
         for b in betas:
@@ -75,22 +99,18 @@ def grid_run():
                 periods = []
                 precisions = []
 
+                queue = multiprocessing.Queue()
+                procs = []
                 for trial in range(trials_per_bin):
-                    rt, rx, peaks, autoc = main.single_pass(b, a, 1, 100000)
-                    group.create_dataset(f'trial_{trial}_concentrations', data=rx)
-                    if len(peaks) == 0:
-                        # Unable to find any peaks
-                        print(f'no peaks :(')
-                        period = 0
-                        precision = 0
-                    else:
-                        # Found some peaks!
-                        # print(f'periods: {rt[peaks]}')
-                        period = rt[peaks[0]]
-                        precision = autoc[peaks[0]]
-                    periods.append(period)
-                    precisions.append(precision)
-                    print(f'trial {trial} {group_name}')
+                    proc = Process(target=thread_run, args=(trial,a,b,group,queue))
+                    procs.append(proc)
+                    proc.start()
+
+                for p in procs:
+                    ret = queue.get()
+                    periods.append(ret[0])
+                    precisions.append(ret[1])
+                print(f'Param complete! {a}  {b}')
 
                 group.create_dataset('period', data=periods)
                 group.create_dataset('precision', data=precisions)
