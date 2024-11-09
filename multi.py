@@ -12,6 +12,7 @@ import h5py
 import multiprocessing
 from multiprocessing import Process
 # pip install h5py
+EXP_DIRECTORY = 'Trials/Replicate_Existing/experimental_results.h5'
 
 
 # Beta should go from 1 to 0.01
@@ -43,7 +44,7 @@ def read_data():
     open the h5py data!
     :return:
     """
-    with h5py.File('experimental_results.h5', 'r') as f:
+    with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
         group = f['param_1-0_1-0']
         period_data = group['period'][:]
@@ -81,6 +82,7 @@ def thread_run(trial_num,alpha,beta,group,queue):
 
 
 
+
 def grid_run():
     """
     Runs a grid of parameters & attempts to solve
@@ -90,7 +92,7 @@ def grid_run():
     alphas = [10 ** (i / 5) for i in range(10 + 1)]
     trials_per_bin = 1000
 
-    with h5py.File('experimental_results.h5', 'w') as f:
+    with h5py.File(EXP_DIRECTORY, 'w') as f:
         for b in betas:
             for a in alphas:
                 group_name = f'param_{str(b).replace(".", "-")}_{str(a).replace(".", "-")}'
