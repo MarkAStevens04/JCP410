@@ -10,9 +10,10 @@ import os
 import datetime
 import h5py
 import multiprocessing
+import time
 from multiprocessing import Process
 # pip install h5py
-EXP_DIRECTORY = 'Trials/Replicate_Existing/experimental_results.h5'
+EXP_DIRECTORY = 'Trials/Replicate_Existing/experimental_results_singleThreaded.h5'
 
 
 # Beta should go from 1 to 0.01
@@ -49,22 +50,32 @@ def read_data():
         group = f['param_1-0_1-0']
         period_data = group['period'][:]
         precision_data = group['precision'][:]
-        concentration_data = group['trial_0_concentrations']
+        all_names = [p for p in group]
+        print(f'all names: {all_names}')
+        concentration_data = group["trial_0_concentrations"]
 
         print(f'period data: {period_data}')
         print(f'precision data: {precision_data}')
         print(f'names: {g_names}')
         print(f'avg period: {np.average(period_data)}')
         print(f'avg precision: {np.average(precision_data)}')
+        print(f'concentration: {concentration_data}')
 
 
 
-def thread_run(trial_num,alpha,beta,group,queue):
+def thread_run(trial_num,alpha,beta,group,queue, dset_queue):
     """
     Runs a single thread of parameters
     """
     rt, rx, peaks, autoc = main.single_pass(beta, alpha, 1, 100000)
-    group.create_dataset(f'trial_{trial_num}_concentrations', data=rx)
+    # print(f'data: {rx.shape}')
+    # (10, 100000) means our max shape size is that
+    # dset = group.create_dataset(f'trial_{trial_num}_concentrations', (10, 100000), data=rx, chunks=(100, 100))
+    # dset = group.create_dataset(f'trial_{trial_num}_concentrations', data=rx)
+    # all_names = [p for p in group]
+    # print(f'all names (in thread): {all_names}')
+
+    # print(f'dset: {dset}')
     if len(peaks) == 0:
         # Unable to find any peaks
         print(f'no peaks :(')
@@ -76,6 +87,7 @@ def thread_run(trial_num,alpha,beta,group,queue):
         period = rt[peaks[0]]
         precision = autoc[peaks[0]]
     queue.put((period,precision))
+    dset_queue.put((f'trial_{trial_num}_concentrations', rx))
     print(f' - trial {trial_num} complete!')
 
 
@@ -90,8 +102,8 @@ def grid_run():
     """
     betas = [10 ** (-1 * (i / 5)) for i in range(10 + 1)]
     alphas = [10 ** (i / 5) for i in range(10 + 1)]
-    trials_per_bin = 1000
-
+    trials_per_bin = 1
+    start = time.time()
     with h5py.File(EXP_DIRECTORY, 'w') as f:
         for b in betas:
             for a in alphas:
@@ -102,21 +114,32 @@ def grid_run():
                 precisions = []
 
                 queue = multiprocessing.Queue()
+                dset_queue = multiprocessing.Queue()
                 procs = []
                 for trial in range(trials_per_bin):
-                    proc = Process(target=thread_run, args=(trial,a,b,group,queue))
+                    proc = thread_run(trial,a,b,group,queue, dset_queue)
+                    # proc = Process(target=thread_run, args=(trial,a,b,group,queue))
                     procs.append(proc)
-                    proc.start()
+                    # proc.start()
 
                 for p in procs:
                     ret = queue.get()
                     periods.append(ret[0])
                     precisions.append(ret[1])
+
+                    ret_dset = dset_queue.get()
+                    group.create_dataset(ret_dset[0], data=ret_dset[1])
+
+                    all_names = [p for p in group]
+                    print(f'all names (in outside): {all_names}')
                 print(f'Param complete! {a}  {b}')
 
                 group.create_dataset('period', data=periods)
                 group.create_dataset('precision', data=precisions)
-
+                all_names = [p for p in group]
+                print(f'all names (final): {all_names}')
+    end = time.time()
+    print(f'took {end - start} seconds!')
 
 
 
@@ -179,5 +202,5 @@ if __name__ == "__main__":
 
     # plt.show()
 
-    # read_data()
-    grid_run()
+    read_data()
+    # grid_run()

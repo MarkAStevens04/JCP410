@@ -1,0 +1,18 @@
+===== Single Threaded Computer =====
+1 Trial
+250sec
+
+===== Single Node, Multi-Thread UWU =====
+1 Trial
+811
+
+1000 Trials
+36006 = 600min = 10hr
+
+===== Single Node, Multi-Thread UWU (outside venv) =====
+1 Trial
+893
+
+=========**************** Calculations ****************=========
+250 * 1000 = 250,000sec = 4166min = 69hrs
+Sped up computation by 7x

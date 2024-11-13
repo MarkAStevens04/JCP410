@@ -303,6 +303,25 @@ def single_pass(Beta, alpha, Hill, num_iterations):
 
 
 
+def deterministic(Beta, alpha, t):
+    """
+    Run one deterministic pass
+    :return:
+    """
+    beta_p = 1  # protein elimination rate
+    beta_m = 1 / Beta # mRNA elimination rate (25min protein half-life)
+    h = 2  # Hill coefficient of cooperativity
+    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
+
+    c = 4.8 / 1.8
+    lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c) # Translation rate constant
+    lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c) # max transcription rate constant
+
+    global p
+    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
+    x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
+    sol = solve_ivp(dYdt, t_span=(0, max(t)), y0=x0, t_eval=t)
+    return sol
 
 
 
