@@ -146,9 +146,8 @@ def dYdt2(t, Y, p):
     p2 = Y[2] * p[1] - Y[3] * p[3]
     m3 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[3] ** p[4]) - Y[4] * (p[2] + p[3])
     p3 = Y[4] * p[1] - Y[5] * p[3]
-
-    m4 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[6] * (p[2])
-    p4 = Y[6] * p[1] - Y[1] * p[3]
+    m4 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[6] * (p[2] + p[3])
+    p4 = Y[6] * p[1] - Y[7] * p[3]
     return [m1, p1, m2, p2, m3, p3, m4, p4]
 
 
@@ -223,5 +222,4 @@ def plot_gfp_det():
     plt.show()
 
 if __name__ == "__main__":
-    plot_deterministic()
     plot_gfp_det()
