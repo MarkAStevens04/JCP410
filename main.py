@@ -17,7 +17,10 @@ import math
 
 
 
-def dYdt(t, Y):
+def dYdt(t, Y, p):
+    # p: (lambda_m, lambda_p, beta_m, beta_p, h, K)
+    # [m1, P1, m2, P2, m3, P3]
+    # print(p)
     m1 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[0] * (p[2] + p[3])
     p1 = Y[0] * p[1] - Y[1] * p[3]
     m2 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[1] ** p[4]) - Y[2] * (p[2] + p[3])
@@ -25,8 +28,6 @@ def dYdt(t, Y):
     m3 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[3] ** p[4]) - Y[4] * (p[2] + p[3])
     p3 = Y[4] * p[1] - Y[5] * p[3]
     return [m1, p1, m2, p2, m3, p3]
-
-
 
 
 
@@ -303,7 +304,7 @@ def single_pass(Beta, alpha, Hill, num_iterations):
 
 
 
-def deterministic(Beta, alpha, t):
+def deterministic(Beta, alpha, t, ode=dYdt, p=None, x0=None):
     """
     Run one deterministic pass
     :return:
@@ -317,10 +318,18 @@ def deterministic(Beta, alpha, t):
     lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c) # Translation rate constant
     lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c) # max transcription rate constant
 
-    global p
-    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
-    x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
-    sol = solve_ivp(dYdt, t_span=(0, max(t)), y0=x0, t_eval=t)
+    # Adds given parameters p to solver
+    if not p:
+        p = (lambda_m, lambda_p, beta_m, beta_p, h, K)  # Parameter vector for ODE solver
+    else:
+        p = (lambda_m, lambda_p, beta_m, beta_p, h, K, *p)
+
+    # Default value of x0, otherwise can be specified
+    if not x0:
+        x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
+
+    # p must be passed as a tuple
+    sol = solve_ivp(ode, t_span=(0, max(t)), y0=x0, t_eval=t, args=(p,))
     return sol
 
 

@@ -106,8 +106,6 @@ def read_grid():
         plt.show()
 
 
-
-
 def plot_stochastic():
     """
     Create time trace graph from algorithm run.
@@ -136,6 +134,28 @@ def plot_stochastic():
     # plt.plot(rt, autoc)
 
     plt.show()
+
+
+
+def dYdt2(t, Y, p):
+    # p: (lambda_m, lambda_p, beta_m, beta_p, h, K)
+    # Y: [m1, P1, m2, P2, m3, P3, m4, P4]
+    m1 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[0] * (p[2] + p[3])
+    p1 = Y[0] * p[1] - Y[1] * p[3]
+    m2 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[1] ** p[4]) - Y[2] * (p[2] + p[3])
+    p2 = Y[2] * p[1] - Y[3] * p[3]
+    m3 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[3] ** p[4]) - Y[4] * (p[2] + p[3])
+    p3 = Y[4] * p[1] - Y[5] * p[3]
+
+    m4 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[6] * (p[2])
+    p4 = Y[6] * p[1] - Y[1] * p[3]
+    return [m1, p1, m2, p2, m3, p3, m4, p4]
+
+
+
+
+
+
 
 
 def plot_deterministic():
@@ -169,5 +189,39 @@ def plot_deterministic():
 
 
 
+
+def plot_gfp_det():
+    """
+       Plots the deterministic model for GFP
+       :return:
+    """
+    t = np.linspace(0, 50, 1000)
+    x0 = [10, 0, 0, 0, 0, 0, 0, 0]
+    sol = main.deterministic(0.277, 380, t, x0=x0, ode=dYdt2, p=("cat",))
+    # [m1, P1, m2, P2, m3, P3, m4, p4]
+
+    p1_sol = sol.y[1]
+    p2_sol = sol.y[3]
+    p3_sol = sol.y[5]
+    p4_sol = sol.y[7]
+    t = sol.t
+
+    plt.figure(figsize=(8, 8))
+
+    plt.plot(t, p1_sol, label="P1", color="#f94144")
+    plt.plot(t, p2_sol, label="P2", color="#f9c74f")
+    plt.plot(t, p3_sol, label="P3", color="#577590")
+    plt.plot(t, p4_sol, label="P4", color="#06d6a0")
+
+    plt.xlabel("Time", fontsize=15)
+    plt.ylabel("Copy Number", fontsize=15)
+    plt.title("GFP Deterministic", fontsize=15)
+
+    plt.legend(loc="upper left")
+    plt.subplots_adjust(bottom=0.1, left=0.1)
+
+    plt.show()
+
 if __name__ == "__main__":
     plot_deterministic()
+    plot_gfp_det()
