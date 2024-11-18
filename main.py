@@ -32,18 +32,18 @@ def dYdt(t, Y, p):
 
 
 # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
-stoich_mat=[
-    [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+# stoich_mat=[
+#     [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+#     [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+#     [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+#     [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+#     [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+#     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
 # Rows: m1, pf1, m2, pf2, m3, pf3
 # Shape: (6 x 12) 6 species, 12 reactions.
-stoich_mat = np.array(stoich_mat)
-n = 1000000
+# stoich_mat = np.array(stoich_mat)
+# n = 1000000
 
 
 
@@ -57,8 +57,7 @@ def calc_rate(x, p):
     """
     # This is where you put in your RVF!
     # return a 1x12 matrix
-    # print(f'running rvf {x}')
-    # print(f'x at 0: {x[0]}')
+
     # POSSIBLE ERROR:
     # deg_m might be (beta_m * x[]) NOT (beta_m + beta_p) * x[]
     lambda_m = p[0]
@@ -94,22 +93,21 @@ def calc_rate(x, p):
 
 
 
-def full_gillespie(rvf, stoich_mat, p, n):
+def full_gillespie(rvf, stoich_mat, p, n, x0=None):
     """
-
+    Performs entire Gillespie simulation
     :param x0: Column vector of initial conditions
     :param rvf: a rate-value function. Should be a function which takes array as input.
     :param stoich_mat: Matrix storing changes to each reaction
     :param n: Number of iterations
-    :return:
+    :param p: Parameters to feed to rvf
+    :return: t, x, tau (Time steps, concentration values, and delta-t for each timestep)
     """
-    x0 = np.zeros((6, 1))
-    x0[0, 0] = 10
-    # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
-    # print(f'x0: {x0}')
+    if x0 is None:
+        x0 = np.zeros((6, 1))
+        x0[0, 0] = 10
+        # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
 
-
-    # print(f'running full gillespie')
 
     # Setup matrix to store our output data.
     x = np.hstack([x0, np.zeros((x0.size, n))])
@@ -119,22 +117,18 @@ def full_gillespie(rvf, stoich_mat, p, n):
     tau = np.zeros((1, n))
 
     for i in range(n):
-        # print(i)
         lamd = rvf(x[:, i], p)
         lamd_tot = np.sum(lamd)
         r_t = np.random.random()
         # Calculate time to next interval
         T = -1 * math.log(r_t) / lamd_tot
-        # print(f'T: {T}')
 
         # normalize lamd btwn 0 and 1
         lamd = lamd/lamd_tot
         # make lamd a cumulative sum ([0.7, 0.1, 0.2] -> [0.7, 0.8, 1.0])
         # Find which reaction rate has been picked!
         lamd = np.cumsum(lamd)
-        # print(f'lamd: {lamd}')
         r = np.random.random()
-        # print(f'r: {r}')
         I = 0
         while lamd[I] < r:
             I += 1
@@ -142,12 +136,8 @@ def full_gillespie(rvf, stoich_mat, p, n):
         # Update our time!
         t[0, i+1] = t[0, i] + T
         # Update our stoich.
-        # print(f'stoich mat: {stoich_mat}')
-        # print(f'selected: {stoich_mat[:, I]}')
-        # print(f'pre: {x}')
         x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
         tau[0, i] = T
-        # print(f'post: {x}')
     return t, x, tau
 
 
@@ -199,6 +189,7 @@ def resample(t, x, t_mean):
 def autocorrelate(rt, rx):
     """
     Determines the autocorrelation of our concentrations and times.
+    MUST ALREADY BE RESAMPLED!!!
     :param rt:
     :param rx:
     :return:
@@ -232,12 +223,18 @@ def autocorrelate(rt, rx):
 
 
 
-def single_pass(Beta, alpha, Hill, num_iterations):
+def single_pass(Beta, alpha, Hill, num_iterations, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
     """
     Performs a single pass of Gillespie Simulation!
-    :param Beta:
-    :param alpha:
-    :return:
+    Calculates peaks and autocorrelation
+    :param Beta: Degradation ratio (protein elimination rate / mRNA elimination rate)
+    :param alpha: Creation / Elimination ratio
+    :param Hill: Hill coefficient of cooperativity
+    :param num_iterations: Number of iterations for our simulation to run
+    :param rvf: Rate-Vector function (Gillespie rvf)
+    :param stoich_mat: Stoichiometric matrix for rvf
+    :param x0_g: initial conditions
+    :return: rt, rx, peaks, autoc
     """
     beta_p = 1  # protein elimination rate
     # Implicity math.log is ln
@@ -249,55 +246,48 @@ def single_pass(Beta, alpha, Hill, num_iterations):
     c = 4.8/1.8
     lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c)
     lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c)
-    # print(f'lambda_p: {lambda_p}')
-    # print(f'lambda_m: {lambda_m}')
-
 
 
     # lambda_m = 4.1 * (25 / math.log(2))  # max transcription rate constant
     # lambda_p = 1.8 * (25 / math.log(2))  # Translation rate constant
 
-    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
+    # Adds parameters to p if they are given
+    if p is None:
+        p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
+    else:
+        p = [lambda_m, lambda_p, beta_m, beta_p, h, K, *p]
 
     # alpha = lambda_p * lambda_m / (beta_m * beta_p * k)
 
-    # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
-    stoich_mat = [
-        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+    # Default values for stoich_mat if none given
+    if not stoich_mat:
+        # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3, prod_P3, deg_P3
+        stoich_mat = [
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
-    # Rows: m1, pf1, m2, pf2, m3, pf3
-    # Shape: (6 x 12) 6 species, 12 reactions.
+        # Rows: m1, pf1, m2, pf2, m3, pf3
+        # Shape: (6 x 12) 6 species, 12 reactions.
     stoich_mat = np.array(stoich_mat)
 
-    x0_g = np.zeros((6, 1))
-    x0_g[0, 0] = 10
+    # Default values for x0_g if none given
+    if x0_g is None:
+        x0_g = np.zeros((6, 1))
+        x0_g[0, 0] = 10
 
 
     # update calc_rate to take our constants as an input parameter
 
-    t, x, tau = full_gillespie(calc_rate, stoich_mat, p, num_iterations)
+    t, x, tau = full_gillespie(rvf, stoich_mat, p, num_iterations, x0_g)
     rt, rx = resample(t[0, :], x, tau.mean())
 
     autoc = autocorrelate(rt, rx)
     offset = 100
     [peaks, locs] = find_peaks(autoc[offset:])
-
-    if len(peaks) == 0:
-        # Unable to find any peaks
-        print(f'no peaks :(')
-        period = 0
-        precision = 0
-    else:
-        # Found some peaks!
-        # print(f'periods: {rt[peaks]}')
-        period = rt[peaks[0]]
-        precision = autoc[peaks[0]]
-
 
     return rt, rx, peaks, autoc
 
