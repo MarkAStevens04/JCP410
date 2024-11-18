@@ -186,7 +186,7 @@ def dYdt2(t, Y, p):
 def rvf_gfp(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
-    :param x: [m1, P1, m2, P2, m3, P3] (array of molecule numbers)
+    :param x: [m1, P1, m2, P2, m3, P3, m4, P4] (array of molecule numbers)
     :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K] Parameter vector for ODE solver
     :return:
     """
@@ -222,7 +222,13 @@ def rvf_gfp(x, p):
 
     prod_p3 = lambda_p * x[4]
     deg_p3 = beta_p * x[5]
-    return [prod_m1, deg_m1, prod_p1, deg_p1, prod_m2, deg_m2, prod_p2, deg_p2, prod_m3, deg_m3, prod_p3, deg_p3]
+
+    prod_m4 = (lambda_m * K ** h) / (K ** h + x[5] ** h)
+    deg_m4 = (beta_m + beta_p) * x[6]
+
+    prod_p4 = lambda_p * x[6]
+    deg_p4 = beta_p * x[7]
+    return [prod_m1, deg_m1, prod_p1, deg_p1, prod_m2, deg_m2, prod_p2, deg_p2, prod_m3, deg_m3, prod_p3, deg_p3, prod_m4, deg_m4, prod_p4, deg_p4]
 
 
 
@@ -246,9 +252,9 @@ def plot_gfp_det():
 
     plt.figure(figsize=(8, 8))
 
-    # plt.plot(t, p1_sol, label="P1", color="#f94144")
-    # plt.plot(t, p2_sol, label="P2", color="#f9c74f")
-    # plt.plot(t, p3_sol, label="P3", color="#577590")
+    plt.plot(t, p1_sol, label="P1", color="#f94144")
+    plt.plot(t, p2_sol, label="P2", color="#f9c74f")
+    plt.plot(t, p3_sol, label="P3", color="#577590")
     plt.plot(t, p4_sol, label="P4", color="#06d6a0")
 
     plt.xlabel("Time", fontsize=15)
@@ -268,15 +274,18 @@ def plot_gfp_stoch():
     Create time trace graph from algorithm run.
     :return:
     """
+    # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3, prod_P3, deg_P3, prod_m4, deg_m4, prod_P4, deg_P4
     stoich_mat = [
-        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
-    x0_g = np.zeros((6, 1))
+    x0_g = np.zeros((8, 1))
     x0_g[0, 0] = 10
 
     rt, rx, peaks, autoc = main.single_pass(0.277, 380, 1, 100000, stoich_mat=stoich_mat, rvf=rvf_gfp, x0_g=x0_g, p=["cat"])
@@ -284,12 +293,14 @@ def plot_gfp_stoch():
     p1_r = rx[1, :]
     p2_r = rx[3, :]
     p3_r = rx[5, :]
+    p4_r = rx[7, :]
 
     plt.figure(figsize=(8, 8))
 
     plt.plot(rt, p1_r, label="P1", color="#f94144")
     plt.plot(rt, p2_r, label="P2", color="#f9c74f")
     plt.plot(rt, p3_r, label="P3", color="#577590")
+    plt.plot(rt, p4_r, label="P4", color="#06d6a0")
 
     plt.xlabel("Time", fontsize=15)
     plt.ylabel("Copy Number", fontsize=15)
@@ -311,5 +322,5 @@ def plot_gfp_stoch():
 
 
 if __name__ == "__main__":
-    # plot_gfp_det()
+    plot_gfp_det()
     plot_gfp_stoch()
