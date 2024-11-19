@@ -68,6 +68,7 @@ def thread_run(trial_num,alpha,beta,group,queue, dset_queue):
     Runs a single thread of parameters
     """
 
+
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     rt, rx, peaks, autoc = main.single_pass(beta, alpha, 1, 100000)
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
