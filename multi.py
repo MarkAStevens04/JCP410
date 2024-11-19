@@ -67,7 +67,12 @@ def thread_run(trial_num,alpha,beta,group,queue, dset_queue):
     """
     Runs a single thread of parameters
     """
+
+    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     rt, rx, peaks, autoc = main.single_pass(beta, alpha, 1, 100000)
+    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
+
+
     # print(f'data: {rx.shape}')
     # (10, 100000) means our max shape size is that
     # dset = group.create_dataset(f'trial_{trial_num}_concentrations', (10, 100000), data=rx, chunks=(100, 100))

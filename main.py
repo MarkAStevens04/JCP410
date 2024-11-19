@@ -223,7 +223,7 @@ def autocorrelate(rt, rx):
 
 
 
-def single_pass(Beta, alpha, Hill, num_iterations, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
+def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
     """
     Performs a single pass of Gillespie Simulation!
     Calculates peaks and autocorrelation
@@ -240,8 +240,12 @@ def single_pass(Beta, alpha, Hill, num_iterations, rvf=calc_rate, stoich_mat=Non
     # Implicity math.log is ln
     # beta_m = 0.1 * (25 / math.log(2))
     beta_m = 1 / Beta
-    h = 2  # Hill coefficient of cooperativity
-    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
+    h = h  # Hill coefficient of cooperativity (default is 2)
+    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
+    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
+    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
+    if K is None:
+        K = 7  # Repression threshold (when 1/2 of all repressors are bound)
 
     c = 4.8/1.8
     lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c)
@@ -294,15 +298,19 @@ def single_pass(Beta, alpha, Hill, num_iterations, rvf=calc_rate, stoich_mat=Non
 
 
 
-def deterministic(Beta, alpha, t, ode=dYdt, p=None, x0=None):
+def deterministic(Beta, alpha, t, h=None, K=None, ode=dYdt, p=None, x0=None):
     """
     Run one deterministic pass
     :return:
     """
     beta_p = 1  # protein elimination rate
     beta_m = 1 / Beta # mRNA elimination rate (25min protein half-life)
-    h = 2  # Hill coefficient of cooperativity
-    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
+
+    # Default values of h and k
+    if h is None:
+        h = 2  # Hill coefficient of cooperativity
+    if K is None:
+        K = 7  # Repression threshold (when 1/2 of all repressors are bound)
 
     c = 4.8 / 1.8
     lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c) # Translation rate constant

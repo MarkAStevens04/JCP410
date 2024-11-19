@@ -252,9 +252,9 @@ def plot_gfp_det():
 
     plt.figure(figsize=(8, 8))
 
-    plt.plot(t, p1_sol, label="P1", color="#f94144")
-    plt.plot(t, p2_sol, label="P2", color="#f9c74f")
-    plt.plot(t, p3_sol, label="P3", color="#577590")
+    # plt.plot(t, p1_sol, label="P1", color="#f94144")
+    # plt.plot(t, p2_sol, label="P2", color="#f9c74f")
+    # plt.plot(t, p3_sol, label="P3", color="#577590")
     plt.plot(t, p4_sol, label="P4", color="#06d6a0")
 
     plt.xlabel("Time", fontsize=15)
@@ -288,7 +288,7 @@ def plot_gfp_stoch():
     x0_g = np.zeros((8, 1))
     x0_g[0, 0] = 10
 
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 1, 100000, stoich_mat=stoich_mat, rvf=rvf_gfp, x0_g=x0_g, p=["cat"])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 100000, stoich_mat=stoich_mat, rvf=rvf_gfp, x0_g=x0_g, p=["cat"])
     # - Regular Graph -
     p1_r = rx[1, :]
     p2_r = rx[3, :]
@@ -297,9 +297,9 @@ def plot_gfp_stoch():
 
     plt.figure(figsize=(8, 8))
 
-    plt.plot(rt, p1_r, label="P1", color="#f94144")
-    plt.plot(rt, p2_r, label="P2", color="#f9c74f")
-    plt.plot(rt, p3_r, label="P3", color="#577590")
+    # plt.plot(rt, p1_r, label="P1", color="#f94144")
+    # plt.plot(rt, p2_r, label="P2", color="#f9c74f")
+    # plt.plot(rt, p3_r, label="P3", color="#577590")
     plt.plot(rt, p4_r, label="P4", color="#06d6a0")
 
     plt.xlabel("Time", fontsize=15)
