@@ -6,7 +6,7 @@ import pandas as pd
 import h5pandas as h5pd
 import main
 
-EXP_DIRECTORY = 'Trials/Replicate_Existing/experimental_results_long.h5'
+EXP_DIRECTORY = 'Trials/Paper_Extension/attempt6_1a.h5'
 
 def parse_params(name):
     """
@@ -79,8 +79,8 @@ def read_grid():
 
         print(df)
 
-        # glue = df.pivot(index="Beta", columns="Alpha", values="Precision")
-        glue = df.pivot(index="Beta", columns="Alpha", values="Period")
+        glue = df.pivot(index="Beta", columns="Alpha", values="Precision")
+        # glue = df.pivot(index="Beta", columns="Alpha", values="Period")
 
         # Put names of rows and columns in scientific notation
         glue.columns = pd.Index([f"{x:.1e}" for x in glue.columns])
@@ -88,14 +88,14 @@ def read_grid():
 
         # sns.set(font_scale=1.5, rc={'text.usetex': True})
         plt.figure(figsize=(10, 10))
-        # g = sns.heatmap(glue, annot=True, fmt=".2f")
-        g2 = sns.heatmap(glue, annot=True, cmap="crest_r")
+        g = sns.heatmap(glue, annot=True, fmt=".2f")
+        # g2 = sns.heatmap(glue, annot=True, cmap="crest_r")
 
         # sns.set_context("notebook", font_scale=2)
         plt.xlabel("$\\alpha$", fontsize=20)
         plt.ylabel("$\\beta$", fontsize=20)
-        plt.title("Mean Period from Variations in $\\alpha$ and $\\beta$", fontsize=20)
-        # plt.title("Mean Precision from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+        # plt.title("Mean Period from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+        plt.title("Mean Precision from Variations in $\\alpha$ and $\\beta$", fontsize=20)
 
         # Add padding
         plt.subplots_adjust(bottom=0.2, left=0.2)
@@ -267,8 +267,6 @@ def plot_gfp_det():
     plt.show()
 
 
-
-
 def plot_gfp_stoch():
     """
     Create time trace graph from algorithm run.
@@ -289,17 +287,20 @@ def plot_gfp_stoch():
     x0_g[0, 0] = 10
 
     rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 100000, stoich_mat=stoich_mat, rvf=rvf_gfp, x0_g=x0_g, p=["cat"])
+
+
     # - Regular Graph -
     p1_r = rx[1, :]
     p2_r = rx[3, :]
     p3_r = rx[5, :]
     p4_r = rx[7, :]
+    p5_r = rx[8, :]
 
     plt.figure(figsize=(8, 8))
 
-    # plt.plot(rt, p1_r, label="P1", color="#f94144")
-    # plt.plot(rt, p2_r, label="P2", color="#f9c74f")
-    # plt.plot(rt, p3_r, label="P3", color="#577590")
+    plt.plot(rt, p1_r, label="P1", color="#f94144")
+    plt.plot(rt, p2_r, label="P2", color="#f9c74f")
+    plt.plot(rt, p3_r, label="P3", color="#577590")
     plt.plot(rt, p4_r, label="P4", color="#06d6a0")
 
     plt.xlabel("Time", fontsize=15)
@@ -315,6 +316,95 @@ def plot_gfp_stoch():
     plt.show()
 
 
+def read_full_gfp_stoch():
+    """
+    Create time trace graph from algorithm run.
+    :return:
+    """
+    # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3, prod_P3, deg_P3, prod_m4, deg_m4, prod_P4, deg_P4
+    # stoich_mat = [
+    #     [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+    #     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+    #
+    # x0_g = np.zeros((8, 1))
+    # x0_g[0, 0] = 10
+    #
+    # rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 100000, stoich_mat=stoich_mat, rvf=rvf_gfp, x0_g=x0_g, p=["cat"])
+    #
+
+    with h5py.File(EXP_DIRECTORY, 'r') as f:
+        g_names = [name for name in f if isinstance(f[name], h5py.Group)]
+        print(f'g_names: {g_names}')
+        group = f['param_0-01_10-0']
+        period_data = group['period'][:]
+        precision_data = group['precision'][:]
+
+        rx = np.array(group.get('trial_0_concentrations'))
+        rt = np.array(group.get('trial_0_times'))
+
+        print(f'period data: {period_data}')
+        print(f'precision data: {precision_data}')
+        print(f'names: {g_names}')
+        print(f'avg period: {np.average(period_data)}')
+        print(f'avg precision: {np.average(precision_data)}')
+        print(f'concentrations: {rx}')
+        print(f'')
+
+        print(f'')
+        # parse the dataset
+        all_alphas = set()
+        all_betas = set()
+
+        for name in g_names:
+            alpha, beta = parse_params(name)
+            all_alphas.add(alpha)
+            all_betas.add(beta)
+
+        all_alphas = [a for a in all_alphas]
+        all_betas = [b for b in all_betas]
+
+        all_alphas.sort()
+        all_betas.sort()
+
+        print(f'all alphas: {all_alphas}')
+        print(f'all betas: {all_betas}')
+
+        print(f'rt: {rt}')
+        print(f'rx: {rx}')
+
+        # - Regular Graph -
+        p1_r = rx[1, :]
+        p2_r = rx[3, :]
+        p3_r = rx[5, :]
+        p4_r = rx[7, :]
+        p5_r = rx[8, :]
+
+        plt.figure(figsize=(8, 8))
+
+        plt.plot(rt, p1_r, label="P1", color="#f94144")
+        plt.plot(rt, p2_r, label="P2", color="#f9c74f")
+        plt.plot(rt, p3_r, label="P3", color="#577590")
+        plt.plot(rt, p4_r, label="P4", color="#06d6a0")
+
+        plt.xlabel("Time", fontsize=15)
+        plt.ylabel("Copy Number", fontsize=15)
+        plt.title("GFP Stochastic", fontsize=15)
+
+        plt.legend(loc="upper left")
+        plt.subplots_adjust(bottom=0.1, left=0.1)
+
+        # - Autocorrelation graph -
+        # plt.plot(rt, autoc)
+
+        plt.show()
+
+
 
 
 
@@ -322,5 +412,6 @@ def plot_gfp_stoch():
 
 
 if __name__ == "__main__":
-    plot_gfp_det()
+    # plot_stochastic()
     plot_gfp_stoch()
+    # read_grid()
