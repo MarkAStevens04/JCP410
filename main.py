@@ -110,11 +110,11 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
 
 
     # Setup matrix to store our output data.
-    x = np.hstack([x0, np.zeros((x0.size, n))])
+    x = np.hstack([x0, np.zeros((x0.size, n * 10))])
     # Matrix to store times
-    t = np.zeros((1, n+1))
+    t = np.zeros((1, (n*10)+1))
     # Matrix to store time intervals
-    tau = np.zeros((1, n))
+    tau = np.zeros((1, (n*10)))
 
     # for i in range(n):
     i = 0
@@ -143,6 +143,13 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
         tau[0, i] = T
 
         i += 1
+
+    print(f'cutting off: {t[0, i+1:]}')
+    print(f'cutting off: {x[:, i + 1:]}')
+    print(f'cutting off: {tau[0, i + 1:]}')
+    t = t[:, :i+1]
+    x = x[:, :i+1]
+    tau = tau[:, :i]
     return t, x, tau
 
 
