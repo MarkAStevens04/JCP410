@@ -6,7 +6,7 @@ import pandas as pd
 import h5pandas as h5pd
 import main
 
-EXP_DIRECTORY = 'Trials/Paper_Extension/attempt13_1a.h5'
+EXP_DIRECTORY = 'Trials/Paper_Extension/attempt15_1b.h5'
 
 def parse_params(name, reversed=True):
     """
@@ -58,7 +58,7 @@ def read_grid():
         all_betas = set()
 
         for name in g_names:
-            alpha, beta = parse_params(name)
+            alpha, beta = parse_params(name, reversed=False)
             all_alphas.add(alpha)
             all_betas.add(beta)
 
@@ -75,7 +75,7 @@ def read_grid():
         df = pd.DataFrame(np.random.randn(len(all_alphas) * len(all_betas), 4), columns=["Alpha", "Beta", "Period", "Precision"])
         print(df)
         for i, name in enumerate(g_names):
-            alpha, beta = parse_params(name)
+            alpha, beta = parse_params(name, reversed=False)
             group = f[name]
             period_data = group['period'][:]
             precision_data = group['precision'][:]
@@ -90,8 +90,15 @@ def read_grid():
         # glue = df.pivot(index="Beta", columns="Alpha", values="Period")
 
         # Put names of rows and columns in scientific notation
-        glue.columns = pd.Index([f"{x:.1e}" for x in glue.columns])
-        glue.index = pd.Index([f"{x:.1e}" for x in glue.index])
+        if min(glue.columns) < 0.1:
+            glue.columns = pd.Index([f"{x:.4f}" for x in glue.columns])
+        else:
+            glue.columns = pd.Index([f"{x:.1f}" for x in glue.columns])
+
+        if min(glue.index) < 0.1:
+            glue.index = pd.Index([f"{x:.4f}" for x in glue.index])
+        else:
+            glue.index = pd.Index([f"{x:.1f}" for x in glue.index])
 
         # sns.set(font_scale=1.5, rc={'text.usetex': True})
         plt.figure(figsize=(10, 10))
@@ -347,7 +354,7 @@ def read_full_gfp_stoch():
     with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
         print(f'g_names: {g_names}')
-        group = f['param_10-0_0-01']
+        group = f['param_10-0_100-0']
         period_data = group['period'][:]
         precision_data = group['precision'][:]
 
@@ -421,6 +428,6 @@ def read_full_gfp_stoch():
 if __name__ == "__main__":
     # plot_stochastic()
     # plot_gfp_stoch()
-    # read_grid()
 
+    # read_grid()
     read_full_gfp_stoch()

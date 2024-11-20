@@ -93,7 +93,7 @@ def calc_rate(x, p):
 
 
 
-def full_gillespie(rvf, stoich_mat, p, n, x0=None):
+def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
     """
     Performs entire Gillespie simulation
     :param x0: Column vector of initial conditions
@@ -116,7 +116,9 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None):
     # Matrix to store time intervals
     tau = np.zeros((1, n))
 
-    for i in range(n):
+    # for i in range(n):
+    i = 0
+    while t[0, i] < min_time:
         lamd = rvf(x[:, i], p)
         lamd_tot = np.sum(lamd)
         r_t = np.random.random()
@@ -135,9 +137,12 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None):
 
         # Update our time!
         t[0, i+1] = t[0, i] + T
+        print(f'current t: {t[0, i+1]}')
         # Update our stoich.
         x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
         tau[0, i] = T
+
+        i += 1
     return t, x, tau
 
 
