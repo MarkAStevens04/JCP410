@@ -282,7 +282,7 @@ def rvf_exp1a(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
     # alpha is the parameter we should change!
@@ -293,6 +293,10 @@ def rvf_exp1a(x, p):
     beta_p = p[3]
     h = p[4]
     K = p[5]
+    alpha = p[6]
+    beta = p[7]
+    # Example parameter values:
+    # known: [160.02406557883805, 60.00902459206427, 3.6101083032490973, 1, 2, 7, 10, 0.01]
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
@@ -307,7 +311,7 @@ def rvf_exp1a(x, p):
     prod_p2 = lambda_p * x[2]
     deg_p2 = beta_p * x[3]
 
-    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + p[6] * x[8]
+    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + beta * x[8]
     deg_m3 = (beta_m + beta_p) * x[4]
 
     prod_p3 = lambda_p * x[4]
@@ -321,7 +325,7 @@ def rvf_exp1a(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -364,7 +368,7 @@ def exp1a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1a, x0_g=x0_g, p=[0.1])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 100000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1a, x0_g=x0_g, p=[10, 0.01])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -393,19 +397,19 @@ def rvf_exp1b(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, lambda_h] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # lambda_h is the parameter we should change!
-    # lmabda_h = 1000 unstable, = 100 stable
+    # beta is the parameter we should change! Corresponds to production of mRNA-3
+    # beta = 1000 semi stable, 100 stable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
     beta_p = p[3]
     h = p[4]
     K = p[5]
-
-    lambda_h = p[6]
+    alpha = p[6]
+    beta = p[7]
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
@@ -420,7 +424,7 @@ def rvf_exp1b(x, p):
     prod_p2 = lambda_p * x[2]
     deg_p2 = beta_p * x[3]
 
-    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + (lambda_h * K ** h) / (K ** h + x[8] ** h)
+    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + (beta * K ** h) / (K ** h + x[8] ** h)
     deg_m3 = (beta_m + beta_p) * x[4]
 
     prod_p3 = lambda_p * x[4]
@@ -434,7 +438,7 @@ def rvf_exp1b(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -477,7 +481,7 @@ def exp1b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[100])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -505,11 +509,11 @@ def rvf_exp2a(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # alpha is the parameter we should change!
-    # alpha = 0.01 semi unstable, 0.1 unstable, 0.001 semi unstable, 0.0001 semi unstable
+    # beta is the parameter we should change! Corresponds to mRNA degradation rate
+    # beta = 0.01 semi unstable, 0.1 unstable, 0.001 semi unstable, 0.0001 semi unstable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
@@ -518,22 +522,23 @@ def rvf_exp2a(x, p):
     K = p[5]
 
     alpha = p[6]
+    beta = p[7]
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
-    deg_m1 = (beta_m + beta_p) * x[0] + x[8] * alpha
+    deg_m1 = (beta_m + beta_p) * x[0] + x[8] * beta
 
     prod_p1 = lambda_p * x[0]
     deg_p1 = beta_p * x[1]
 
     prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h)
-    deg_m2 = (beta_m + beta_p) * x[2] + x[8] * alpha
+    deg_m2 = (beta_m + beta_p) * x[2] + x[8] * beta
 
     prod_p2 = lambda_p * x[2]
     deg_p2 = beta_p * x[3]
 
     prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + p[6] * x[8]
-    deg_m3 = (beta_m + beta_p) * x[4] + x[8] * alpha
+    deg_m3 = (beta_m + beta_p) * x[4] + x[8] * beta
 
     prod_p3 = lambda_p * x[4]
     deg_p3 = beta_p * x[5]
@@ -546,7 +551,7 @@ def rvf_exp2a(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -589,7 +594,7 @@ def exp2a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2a, x0_g=x0_g, p=[0.0001])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2a, x0_g=x0_g, p=[10, 0.0001])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -619,11 +624,11 @@ def rvf_exp2b(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # alpha is the parameter we should change!
-    # alpha = 0.01 semi stable, 0.1 unstable, 0.001 mostly stable
+    # beta is the parameter we should change! Corresponds to mRNA degradation rate
+    # beta = 0.01 semi stable, 0.1 unstable, 0.001 mostly stable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
@@ -632,35 +637,36 @@ def rvf_exp2b(x, p):
     K = p[5]
 
     alpha = p[6]
+    beta = p[7]
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
-    deg_m1 = (beta_m + beta_p) * x[0] + x[8] * alpha
+    deg_m1 = (beta_m + beta_p) * x[0] + x[8] * beta
 
     prod_p1 = lambda_p * x[0]
     deg_p1 = beta_p * x[1]
 
     prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h)
-    deg_m2 = (beta_m + beta_p) * x[2] + x[8] * alpha
+    deg_m2 = (beta_m + beta_p) * x[2] + x[8] * beta
 
     prod_p2 = lambda_p * x[2]
     deg_p2 = beta_p * x[3]
 
     prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + p[6] * x[8]
-    deg_m3 = (beta_m + beta_p) * x[4] + x[8] * alpha
+    deg_m3 = (beta_m + beta_p) * x[4] + x[8] * beta
 
     prod_p3 = lambda_p * x[4]
     deg_p3 = beta_p * x[5]
 
     prod_m4 = (lambda_m * K ** h) / (K ** h + x[5] ** h)
-    deg_m4 = (beta_m + beta_p) * x[6] + x[8] * alpha
+    deg_m4 = (beta_m + beta_p) * x[6] + x[8] * beta
 
     prod_p4 = lambda_p * x[6]
     deg_p4 = beta_p * x[7]
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -703,7 +709,7 @@ def exp2b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2b, x0_g=x0_g, p=[0.0001])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2b, x0_g=x0_g, p=[10, 0.0001])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -730,11 +736,11 @@ def rvf_exp3a(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # alpha is the parameter we should change!
-    # alpha = 0.1 unstable, 0.001 pretty much stable
+    # beta is the parameter we should change! Corresponds to mRNA production in relation to H2O2
+    # beta = 0.1 unstable, 0.001 pretty much stable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
@@ -742,8 +748,11 @@ def rvf_exp3a(x, p):
     h = p[4]
     K = p[5]
 
+    alpha = p[6]
+    beta = p[7]
 
-    prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h) + p[6] * x[8]
+
+    prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h) + beta * x[8]
     deg_m1 = (beta_m + beta_p) * x[0]
 
     prod_p1 = lambda_p * x[0]
@@ -769,7 +778,7 @@ def rvf_exp3a(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -812,7 +821,7 @@ def exp3a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3a, x0_g=x0_g, p=[0.01])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3a, x0_g=x0_g, p=[10, 0.01])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -841,11 +850,11 @@ def rvf_exp3b(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, lambda_h] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # lambda_h is the parameter we should change!
-    # lmabda_h = 1000 unstable, = 100 stable
+    # beta is the parameter we should change! Corresponds to mRNA-1 transcription in response to H2O2
+    # beta = 1000 unstable, = 100 stable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
@@ -853,10 +862,11 @@ def rvf_exp3b(x, p):
     h = p[4]
     K = p[5]
 
-    lambda_h = p[6]
+    alpha = p[6]
+    beta = p[7]
 
 
-    prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h) + (lambda_h * K ** h) / (K ** h + x[8] ** h)
+    prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h) + (beta * K ** h) / (K ** h + x[8] ** h)
     deg_m1 = (beta_m + beta_p) * x[0]
 
     prod_p1 = lambda_p * x[0]
@@ -882,7 +892,7 @@ def rvf_exp3b(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -925,7 +935,7 @@ def exp3b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3b, x0_g=x0_g, p=[1000])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3b, x0_g=x0_g, p=[10, 1000])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -954,17 +964,20 @@ def rvf_exp4a(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # alpha is the parameter we should change!
-    # alpha = 0.1 unstable, 0.001 pretty much stable
+    # beta is the parameter we should change! Corresponds to mRNA-2 transcript rate in response to H2O2
+    # beta = 0.1 unstable, 0.001 pretty much stable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
     beta_p = p[3]
     h = p[4]
     K = p[5]
+
+    alpha = p[6]
+    beta = p[7]
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
@@ -973,7 +986,7 @@ def rvf_exp4a(x, p):
     prod_p1 = lambda_p * x[0]
     deg_p1 = beta_p * x[1]
 
-    prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h) + p[6] * x[8]
+    prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h) + beta * x[8]
     deg_m2 = (beta_m + beta_p) * x[2]
 
     prod_p2 = lambda_p * x[2]
@@ -993,7 +1006,7 @@ def rvf_exp4a(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -1036,7 +1049,7 @@ def exp4a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 10000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4a, x0_g=x0_g, p=[0.1])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 10000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4a, x0_g=x0_g, p=[10, 0.1])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1065,11 +1078,11 @@ def rvf_exp4b(x, p):
     """
     Calculates the rates of rxns using current quantities of each species
     :param x: [m1, P1, m2, P2, m3, P3, m4, P4, h] (array of molecule numbers)
-    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, lambda_h] Parameter vector for ODE solver
+    :param p: [lambda_m, lambda_p, beta_m, beta_p, h, K, alpha, beta] Parameter vector for ODE solver
     :return:
     """
-    # lambda_h is the parameter we should change!
-    # lmabda_h = 1000 unstable, = 100 stable
+    # beta is the parameter we should change! Corresponds to mRNA-2 transcript rate in response to H2O2
+    # beta = 1000 unstable, = 100 stable
     lambda_m = p[0]
     lambda_p = p[1]
     beta_m = p[2]
@@ -1077,7 +1090,8 @@ def rvf_exp4b(x, p):
     h = p[4]
     K = p[5]
 
-    lambda_h = p[6]
+    alpha = p[6]
+    beta = p[7]
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h)
@@ -1086,7 +1100,7 @@ def rvf_exp4b(x, p):
     prod_p1 = lambda_p * x[0]
     deg_p1 = beta_p * x[1]
 
-    prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h) + (lambda_h * K ** h) / (K ** h + x[8] ** h)
+    prod_m2 = (lambda_m * K ** h) / (K ** h + x[1] ** h) + (beta * K ** h) / (K ** h + x[8] ** h)
     deg_m2 = (beta_m + beta_p) * x[2]
 
     prod_p2 = lambda_p * x[2]
@@ -1106,7 +1120,7 @@ def rvf_exp4b(x, p):
 
     # * 60 b/c we're in molecules / sec and we need to be in molecules/min
     # stoich is number of hydrogen peroxide generated per GFP.
-    stoich = 19
+    stoich = alpha
     # h_generation = 5835 * 60
     # V_max = 1.2 * (10 ** 6) * 60
     # K = 7.2 * (10 ** 17) * 60
@@ -1149,7 +1163,7 @@ def exp4b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4b, x0_g=x0_g, p=[1000])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4b, x0_g=x0_g, p=[10, 1000])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1218,8 +1232,8 @@ def plot_gfp_stoch():
     plt.figure(figsize=(8, 8))
     # h2o2_wrapper_stoch(plt)
     # gfp_wrapper_stoch(plt)
-    exp1a_wrapper_stoch(plt)
-    # exp1b_wrapper_stoch(plt)
+    # exp1a_wrapper_stoch(plt)
+    exp1b_wrapper_stoch(plt)
     # exp2a_wrapper_stoch(plt)
     # exp2b_wrapper_stoch(plt)
     # exp3a_wrapper_stoch(plt)

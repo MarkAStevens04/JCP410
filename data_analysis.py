@@ -6,19 +6,26 @@ import pandas as pd
 import h5pandas as h5pd
 import main
 
-EXP_DIRECTORY = 'Trials/Paper_Extension/attempt6_1a.h5'
+EXP_DIRECTORY = 'Trials/Paper_Extension/attempt13_1a.h5'
 
-def parse_params(name):
+def parse_params(name, reversed=True):
     """
     Parses the name of the param
     :param name:
+    :param reversed: Whether to use old version (true) or updated (false)
     :return:
     """
     name = name.replace('-', '.')
     params = name.split('_')
     try:
-        beta = float(params[1])
-        alpha = float(params[2])
+        if reversed:
+            # Previous version
+            beta = float(params[1])
+            alpha = float(params[2])
+        else:
+            # Updated version
+            alpha = float(params[1])
+            beta = float(params[2])
         return alpha, beta
     except:
         print(f'invalid name!')
@@ -33,19 +40,19 @@ def read_grid():
     """
     with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
-        group = f['param_1-0_1-0']
-        period_data = group['period'][:]
-        precision_data = group['precision'][:]
-        # concentration_data = group['trial_0_concentrations']
-
-        print(f'period data: {period_data}')
-        print(f'precision data: {precision_data}')
-        print(f'names: {g_names}')
-        print(f'avg period: {np.average(period_data)}')
-        print(f'avg precision: {np.average(precision_data)}')
-        print(f'')
-
-        print(f'')
+        # group = f['param_1-0_1-0']
+        # period_data = group['period'][:]
+        # precision_data = group['precision'][:]
+        # # concentration_data = group['trial_0_concentrations']
+        #
+        # print(f'period data: {period_data}')
+        # print(f'precision data: {precision_data}')
+        # print(f'names: {g_names}')
+        # print(f'avg period: {np.average(period_data)}')
+        # print(f'avg precision: {np.average(precision_data)}')
+        # print(f'')
+        #
+        # print(f'')
         # parse the dataset
         all_alphas = set()
         all_betas = set()
@@ -294,7 +301,6 @@ def plot_gfp_stoch():
     p2_r = rx[3, :]
     p3_r = rx[5, :]
     p4_r = rx[7, :]
-    p5_r = rx[8, :]
 
     plt.figure(figsize=(8, 8))
 
@@ -341,7 +347,7 @@ def read_full_gfp_stoch():
     with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
         print(f'g_names: {g_names}')
-        group = f['param_0-01_10-0']
+        group = f['param_10-0_0-01']
         period_data = group['period'][:]
         precision_data = group['precision'][:]
 
@@ -362,7 +368,7 @@ def read_full_gfp_stoch():
         all_betas = set()
 
         for name in g_names:
-            alpha, beta = parse_params(name)
+            alpha, beta = parse_params(name, reversed=False)
             all_alphas.add(alpha)
             all_betas.add(beta)
 
@@ -375,8 +381,8 @@ def read_full_gfp_stoch():
         print(f'all alphas: {all_alphas}')
         print(f'all betas: {all_betas}')
 
-        print(f'rt: {rt}')
-        print(f'rx: {rx}')
+        print(f'rt: {rt.shape}')
+        print(f'rx: {rx.shape}')
 
         # - Regular Graph -
         p1_r = rx[1, :]
@@ -387,6 +393,7 @@ def read_full_gfp_stoch():
 
         plt.figure(figsize=(8, 8))
 
+        plt.plot(rt, p5_r, label="P5", color="#c1121f")
         plt.plot(rt, p1_r, label="P1", color="#f94144")
         plt.plot(rt, p2_r, label="P2", color="#f9c74f")
         plt.plot(rt, p3_r, label="P3", color="#577590")
@@ -413,5 +420,7 @@ def read_full_gfp_stoch():
 
 if __name__ == "__main__":
     # plot_stochastic()
-    plot_gfp_stoch()
+    # plot_gfp_stoch()
     # read_grid()
+
+    read_full_gfp_stoch()
