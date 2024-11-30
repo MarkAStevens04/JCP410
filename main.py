@@ -246,8 +246,10 @@ def autocorrelate(rt, rx):
         mean_2 = freqs[mean2_index]
 
         y_bell = gaussian(freqs[idx], amp, mean_2, std)
-        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std])
-        y_bell2 = gaussian(freqs[idx], *popt)
+        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std],
+                               method='dogbox')
+        y_bell_dog = gaussian(freqs[idx], *popt)
+
         # print(f'popt: {popt}')
         # print(f'pcov: {pcov}')
         print(f'amp: {amp}')
@@ -272,7 +274,10 @@ def autocorrelate(rt, rx):
         print(f'---')
         plt.plot(freqs[idx], power_spectrum_half[idx])
         plt.plot(freqs[idx], y_bell)
-        plt.plot(freqs[idx], y_bell2)
+        plt.plot(freqs[idx], y_bell_dog, label='dog')
+
+        plt.legend(loc='upper left')
+
         # plt.plot(rt_adj, power_spectrum_half)
 
         plt.show()
