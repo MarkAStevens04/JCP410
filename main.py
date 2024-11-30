@@ -4,6 +4,7 @@ import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
+from scipy.optimize import curve_fit
 import math
 # pip install numpy
 # pip install matplotlib
@@ -195,7 +196,8 @@ def resample(t, x, t_mean):
 #     # print(f'rx: {rx}')
 #     result = np.correlate(rx[0, :], rx[0, :], mode='full')
 #     return result[result.size//2:]
-
+def gaussian(x, amplitude, mean, stddev):
+    return amplitude * np.exp(-((x - mean)**2) / (2 * stddev**2))
 
 def autocorrelate(rt, rx):
     """
@@ -239,6 +241,18 @@ def autocorrelate(rt, rx):
         var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
         std = math.sqrt(var)
         std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+        amp = max(power_spectrum_half[idx])
+        mean2_index = np.argmax(power_spectrum_half[idx])
+        mean_2 = freqs[mean2_index]
+
+        y_bell = gaussian(freqs[idx], amp, mean_2, std)
+        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std])
+        y_bell2 = gaussian(freqs[idx], *popt)
+        # print(f'popt: {popt}')
+        # print(f'pcov: {pcov}')
+        print(f'amp: {amp}')
+        print(f'mean_2: {mean_2}')
+
         print(f'std2: {std2}')
         print(f'std: {std}')
         print(f'var: {var}')
@@ -257,6 +271,8 @@ def autocorrelate(rt, rx):
         print(idx)
         print(f'---')
         plt.plot(freqs[idx], power_spectrum_half[idx])
+        plt.plot(freqs[idx], y_bell)
+        plt.plot(freqs[idx], y_bell2)
         # plt.plot(rt_adj, power_spectrum_half)
 
         plt.show()
