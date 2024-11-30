@@ -137,16 +137,15 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
 
         # Update our time!
         t[0, i+1] = t[0, i] + T
-        print(f'current t: {t[0, i+1]}')
         # Update our stoich.
         x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
         tau[0, i] = T
 
         i += 1
 
-    print(f'cutting off: {t[0, i+1:]}')
-    print(f'cutting off: {x[:, i + 1:]}')
-    print(f'cutting off: {tau[0, i + 1:]}')
+    # print(f'cutting off: {t[0, i+1:]}')
+    # print(f'cutting off: {x[:, i + 1:]}')
+    # print(f'cutting off: {tau[0, i + 1:]}')
     t = t[:, :i+1]
     x = x[:, :i+1]
     tau = tau[:, :i]
@@ -217,6 +216,14 @@ def autocorrelate(rt, rx):
         # for every species,,,
         frx = np.fft.fft(rx[i, :], n=2 * n_points)
         power_spectrum = frx * np.conj(frx)
+        power_spectrum_half = np.real(power_spectrum[10000:power_spectrum.size // 2])
+        rt_adj = rt[10000:]
+        plt.figure(figsize=(8, 8))
+        print(f'power spectrum shape: {power_spectrum_half}')
+        print(f'rt shape: {rt.shape}')
+        print(power_spectrum_half[-10:])
+        plt.plot(rt_adj, power_spectrum_half)
+        plt.show()
 
         ac += np.fft.ifft(power_spectrum)
 
