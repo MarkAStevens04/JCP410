@@ -481,7 +481,7 @@ def exp1b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 300000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 600000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
 
     # - Regular Graph -
     p1_r = rx[1, :]

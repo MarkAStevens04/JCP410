@@ -93,7 +93,7 @@ def calc_rate(x, p):
 
 
 
-def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
+def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=40):
     """
     Performs entire Gillespie simulation
     :param x0: Column vector of initial conditions
@@ -210,22 +210,60 @@ def autocorrelate(rt, rx):
 
     rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
     ac = np.zeros(2 * n_points, dtype=complex)
+    ac_p = np.zeros(2 * n_points, dtype=complex)
+
 
 
     for i in range(n_species):
         # for every species,,,
+        # Helpful stack overflow
+        # https://stackoverflow.com/questions/15382076/plotting-power-spectrum-in-python
+        # frx = np.fft.fft(rx[i, :], n=2 * n_points)
         frx = np.fft.fft(rx[i, :], n=2 * n_points)
+
         power_spectrum = frx * np.conj(frx)
-        power_spectrum_half = np.real(power_spectrum[10000:power_spectrum.size // 2])
-        rt_adj = rt[10000:]
-        plt.figure(figsize=(8, 8))
+        # power_spectrum_half = np.abs(np.real(frx[1:frx.size // 2])) ** 2
+        # power_spectrum_half = np.abs(frx[1000:frx.size // 2]) ** 2
+        power_spectrum_half = np.abs(frx) ** 2
+
+
+        rt_adj = rt[1000:frx.size // 2]
+        # rx_adj = rx[i, 1000:]
+        plt.figure(figsize=(6, 6))
+        time_step = rt_adj[2] - rt_adj[1]
+
+        freqs = np.fft.fftfreq(power_spectrum_half.size, time_step)
+        idx = np.argsort(freqs)[freqs.size // 2 + 1:freqs.size // 2 + 100]
+        avg = np.average(freqs[idx], weights=power_spectrum_half[idx])
+        var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
+        var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
+        std = math.sqrt(var)
+        std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+        print(f'std2: {std2}')
+        print(f'std: {std}')
+        print(f'var: {var}')
+        print(f'avg: {avg}')
+        # idx = np.argsort(power_spectrum_half)
         print(f'power spectrum shape: {power_spectrum_half}')
-        print(f'rt shape: {rt.shape}')
+        print(f'rt shape: {rt_adj.shape}')
+        # print(f'rx shape: {rx_adj.shape}')
+        print(f'time_step: {time_step}')
+        print(f'freqs: {freqs}')
         print(power_spectrum_half[-10:])
-        plt.plot(rt_adj, power_spectrum_half)
+
+        # plt.plot(rt_adj, power_spectrum_half)
+        print(freqs[idx])
+        print(power_spectrum_half[idx])
+        print(idx)
+        print(f'---')
+        plt.plot(freqs[idx], power_spectrum_half[idx])
+        # plt.plot(rt_adj, power_spectrum_half)
+
         plt.show()
 
         ac += np.fft.ifft(power_spectrum)
+        ac_p += power_spectrum_half
+    plt.plot(freqs[idx], power_spectrum_half[idx])
 
     ac = ac / n_species
     ac = np.fft.fftshift(ac)
@@ -235,6 +273,10 @@ def autocorrelate(rt, rx):
 
     ac_half = ac[:ac.size//2]
     ac_half = np.real(ac_half)
+
+    plt.plot(rt, ac_half)
+    plt.show()
+
     return ac_half
 
 
