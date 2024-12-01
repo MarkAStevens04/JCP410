@@ -14,6 +14,12 @@ import re
 # RVFs are for stochastic simulations, dYdt are for deterministic.
 # We define wrappers to help quickly set up parameters.
 
+# = Future Work =
+# Use wavelet transform to see how frequency-amplitude changes over time?
+# Investigate changes in phase spectrum over time
+#   - Like, how quickly the cycle "falls off" essentially
+
+
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -381,7 +387,7 @@ def exp1a_wrapper_stoch(plt):
     # p.print_callers()
     # p.strip_dirs()
     # print(f'profiled!')
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1a, x0_g=x0_g, p=[10, 0.01])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1a, x0_g=x0_g, p=[10, 0.01])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -494,7 +500,7 @@ def exp1b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
 
     # - Regular Graph -
     p1_r = rx[1, :]

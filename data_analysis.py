@@ -6,7 +6,7 @@ import pandas as pd
 import h5pandas as h5pd
 import main
 
-EXP_DIRECTORY = 'Trials/Paper_Extension/attempt15_1b.h5'
+EXP_DIRECTORY = 'Trials/Paper_Extension/attempt63_1a.h5'
 
 def parse_params(name, reversed=True):
     """
@@ -72,22 +72,30 @@ def read_grid():
         print(f'all betas: {all_betas}')
 
 
-        df = pd.DataFrame(np.random.randn(len(all_alphas) * len(all_betas), 4), columns=["Alpha", "Beta", "Period", "Precision"])
+        df = pd.DataFrame(np.random.randn(len(all_alphas) * len(all_betas), 4), columns=["Alpha", "Beta", "Std", "S95"])
         print(df)
         for i, name in enumerate(g_names):
             alpha, beta = parse_params(name, reversed=False)
             group = f[name]
-            period_data = group['period'][:]
-            precision_data = group['precision'][:]
-            avg_period = np.average(period_data)
-            avg_precision = np.average(precision_data)
+            # period_data = group['period'][:]
+            # precision_data = group['precision'][:]
+            reactant_data = group['reactant_9'][:]
+            # Recall: findings = [spread_99, spread_95, spread_68, spread_50, popt-1, popt-2, popt-3, std2, amp, mean_2]
+            std_reactant = reactant_data[:, 7]
+            s95_reactant = reactant_data[:, 1]
 
-            df.iloc[i] = [alpha, beta, avg_period, avg_precision]
+            avg_std = np.average(std_reactant)
+            avg_s95 = np.average(s95_reactant)
+            # avg_period = np.average(period_data)
+            # avg_precision = np.average(precision_data)
+
+            # df.iloc[i] = [alpha, beta, avg_period, avg_precision]
+            df.iloc[i] = [alpha, beta, avg_std, avg_s95]
 
         print(df)
 
-        glue = df.pivot(index="Beta", columns="Alpha", values="Precision")
-        # glue = df.pivot(index="Beta", columns="Alpha", values="Period")
+        glue = df.pivot(index="Beta", columns="Alpha", values="Std")
+        # glue = df.pivot(index="Beta", columns="Alpha", values="S95")
 
         # Put names of rows and columns in scientific notation
         if min(glue.columns) < 0.1:
@@ -108,8 +116,8 @@ def read_grid():
         # sns.set_context("notebook", font_scale=2)
         plt.xlabel("$\\alpha$", fontsize=20)
         plt.ylabel("$\\beta$", fontsize=20)
-        # plt.title("Mean Period from Variations in $\\alpha$ and $\\beta$", fontsize=20)
-        plt.title("Mean Precision from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+        # plt.title("Mean Difference in 95th percentile from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+        plt.title("Mean Standard Deviation from Variations in $\\alpha$ and $\\beta$", fontsize=20)
 
         # Add padding
         plt.subplots_adjust(bottom=0.2, left=0.2)
@@ -354,18 +362,29 @@ def read_full_gfp_stoch():
     with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
         print(f'g_names: {g_names}')
-        group = f['param_10-0_100-0']
-        period_data = group['period'][:]
-        precision_data = group['precision'][:]
+        group = f['param_0_0-01']
+        for n in group:
+            print(n)
+        # period_data = group['period'][:]
+        # precision_data = group['precision'][:]
+        reactant_data = group['reactant_9'][:]
+
+        # Recall: findings = [spread_99, spread_95, spread_68, spread_50, popt-1, popt-2, popt-3, std2, amp, mean_2]
+        std_reactant = reactant_data[:, 7]
+
+        print(f'len: {len(reactant_data)}')
+        print(f'reactant_data: {reactant_data}')
+        print(f'std_reactant : {std_reactant}')
 
         rx = np.array(group.get('trial_0_concentrations'))
         rt = np.array(group.get('trial_0_times'))
 
-        print(f'period data: {period_data}')
-        print(f'precision data: {precision_data}')
+        # print(f'period data: {period_data}')
+        # print(f'precision data: {precision_data}')
         print(f'names: {g_names}')
-        print(f'avg period: {np.average(period_data)}')
-        print(f'avg precision: {np.average(precision_data)}')
+        # print(f'avg period: {np.average(period_data)}')
+        # print(f'avg precision: {np.average(precision_data)}')
+        print(f'avg std: {np.average(std_reactant)}')
         print(f'concentrations: {rx}')
         print(f'')
 
@@ -429,5 +448,5 @@ if __name__ == "__main__":
     # plot_stochastic()
     # plot_gfp_stoch()
 
-    # read_grid()
-    read_full_gfp_stoch()
+    read_grid()
+    # read_full_gfp_stoch()

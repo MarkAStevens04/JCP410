@@ -205,18 +205,18 @@ def freq_amp_spec(rx, n_points):
     Creates the frequency-amplitude spectrum
     :return:
     """
-    frx = np.fft.fft(rx, n=2 * n_points)
+    frx = np.fft.fft(rx, n=2 * n_points, axis=1)
 
-    power_spectrum = frx * np.conj(frx)
+    # power_spectrum = frx * np.conj(frx)
     # needs to be squared to add power spectra together
     # Curves tend to fit better for non-squared version
     power_spectrum_half = np.abs(frx) ** 2
-    return power_spectrum_half[:power_spectrum_half.size // 2 + 1]
+    return power_spectrum_half[:, :power_spectrum_half.shape[1] // 2 + 1]
 
 
 
 
-def fourier_analysis(power, n_points, rt):
+def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     """
     Performs all fourier analysis
     :return:
@@ -227,25 +227,19 @@ def fourier_analysis(power, n_points, rt):
     # prints
     # Parallelize fourier transformation
 
-    power_spectrum_half = power
-    # power_spectrum_half = power_spectrum_half
+
+    # print(f'power_spectrum_half shape: {power_spectrum_half.shape}')
+    # print(f'rt shape: {rt.shape}')
 
 
-    print(f'power_spectrum_half shape: {power_spectrum_half.shape}')
-    print(f'rt shape: {rt.shape}')
-
-    # rt_adj = rt[1000:power_spectrum_half.size // 2]
-    rt_adj = rt
-    # rx_adj = rx[i, 1000:]
-    plt.figure(figsize=(6, 6))
+    # plt.figure(figsize=(6, 6))
     time_step = rt_adj[2] - rt_adj[1]
 
     freqs = np.fft.fftfreq(n_points, time_step)
 
-    print(f'freqs size: {freqs.shape}')
-    print(f'n points: {n_points}')
-    idx = np.argsort(freqs)[n_points // 2 + 1:n_points // 2 + 100]
-    # idx = np.argsort(freqs)[:]
+    # print(f'freqs size: {freqs.shape}')
+    # print(f'n points: {n_points}')
+    idx = np.argsort(freqs)[n_points // 2 + 1:n_points // 2 + 1000]
 
     # avg = np.average(freqs[idx], weights=power_spectrum_half[idx])
     # var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
@@ -256,10 +250,10 @@ def fourier_analysis(power, n_points, rt):
     mean2_index = np.argmax(power_spectrum_half[idx])
     mean_2 = freqs[mean2_index]
 
-    y_bell = gaussian(freqs[idx], amp, mean_2, std2)
+    # y_bell = gaussian(freqs[idx], amp, mean_2, std2)
     popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
                            method='dogbox')
-    y_bell_dog = gaussian(freqs[idx], *popt)
+    # y_bell_dog = gaussian(freqs[idx], *popt)
 
     pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
     cdf_freq = np.cumsum(pdf_freq)
@@ -281,13 +275,20 @@ def fourier_analysis(power, n_points, rt):
 
     findings = [spread_99, spread_95, spread_68, spread_50, popt, std2, amp, mean_2]
 
-    plt.plot(freqs[idx], power_spectrum_half[idx])
-    plt.plot(freqs[idx], y_bell)
-    plt.plot(freqs[idx], y_bell_dog, label='dog')
+    # plt.plot(freqs[idx], power_spectrum_half[idx])
+    # plt.plot(freqs[idx], y_bell)
+    # plt.plot(freqs[idx], y_bell_dog, label='dog')
+    #
+    # plt.legend(loc='upper left')
+    #
+    # plt.show()
 
-    plt.legend(loc='upper left')
+    # for d in range(n_reactants):
+    #     data_findings[d].append(ret[d])
 
-    plt.show()
+
+    # for d in range(n_reactants):
+    #     group.create_dataset(f'reactant_{d}', data=data_findings[d])
 
     return power, findings
 
@@ -311,10 +312,10 @@ def autocorrelate(rt, rx):
     n_species = rx.shape[0]
 
     rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
-    ac = np.zeros(2 * n_points, dtype=complex)
     ac_p = np.zeros(n_points + 1, dtype=float)
 
     stored_data = []
+    power_a = freq_amp_spec(rx, n_points)
 
     for i in range(n_species):
         # for every species,,,
@@ -322,120 +323,18 @@ def autocorrelate(rt, rx):
         # https://stackoverflow.com/questions/15382076/plotting-power-spectrum-in-python
         # frx = np.fft.fft(rx[i, :], n=2 * n_points)
 
+        power, findings = fourier_analysis(power_a[i, :], n_points, rt)
 
-
-        # frx = np.fft.fft(rx[i, :], n=2 * n_points)
-        #
-        # power_spectrum = frx * np.conj(frx)
-        # # power_spectrum_half = np.abs(np.real(frx[1:frx.size // 2])) ** 2
-        # # power_spectrum_half = np.abs(frx[1000:frx.size // 2]) ** 2
-        # power_spectrum_half = np.abs(frx) ** 2
-        #
-        # rt_adj = rt[1000:frx.size // 2]
-        # # rx_adj = rx[i, 1000:]
-        # plt.figure(figsize=(6, 6))
-        # time_step = rt_adj[2] - rt_adj[1]
-        #
-        # freqs = np.fft.fftfreq(power_spectrum_half.size, time_step)
-        # idx = np.argsort(freqs)[freqs.size // 2 + 1:freqs.size // 2 + 100]
-        # avg = np.average(freqs[idx], weights=power_spectrum_half[idx])
-        # var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
-        # var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
-        # std = math.sqrt(var)
-        # std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
-        # amp = max(power_spectrum_half[idx])
-        # mean2_index = np.argmax(power_spectrum_half[idx])
-        # mean_2 = freqs[mean2_index]
-        #
-        # y_bell = gaussian(freqs[idx], amp, mean_2, std)
-        # popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std],
-        #                        method='dogbox')
-        # y_bell_dog = gaussian(freqs[idx], *popt)
-        #
-        # pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
-        # cdf_freq = np.cumsum(pdf_freq)
-        # indices_99 = np.where((cdf_freq >= 0.005) & (cdf_freq <= 0.995))[0]
-        # indices_95 = np.where((cdf_freq >= 0.025) & (cdf_freq <= 0.975))[0]
-        # indices_68 = np.where((cdf_freq >= 0.16) & (cdf_freq <= 0.84))[0]
-        # indices_50 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
-        # min_index_99, max_index_99 = indices_99[0], indices_99[-1]
-        # min_index_95, max_index_95 = indices_95[0], indices_95[-1]
-        # min_index_68, max_index_68 = indices_68[0], indices_68[-1]
-        # min_index_50, max_index_50 = indices_50[0], indices_50[-1]
-        #
-        # spread_99 = freqs[max_index_99] - freqs[min_index_99]
-        # spread_95 = freqs[max_index_95] - freqs[min_index_95]
-        # spread_68 = freqs[max_index_68] - freqs[min_index_68]
-        # spread_50 = freqs[max_index_50] - freqs[min_index_50]
-
-        # print(f'cum_sum cdf: {cdf_freq}')
-        # print(f'spread_99: {spread_99}')
-        # print(f'spread_95: {spread_95}')
-        # print(f'spread_68: {spread_68}')
-        # print(f'spread_50: {spread_50}')
-
-        # # print(f'popt: {popt}')
-        # # print(f'pcov: {pcov}')
-        # print(f'amp: {amp}')
-        # print(f'mean_2: {mean_2}')
-        #
-        # print(f'std2: {std2}')
-        # print(f'std: {std}')
-        # print(f'var: {var}')
-        # print(f'avg: {avg}')
-        # # idx = np.argsort(power_spectrum_half)
-        # print(f'power spectrum shape: {power_spectrum_half}')
-        # print(f'rt shape: {rt_adj.shape}')
-        # # print(f'rx shape: {rx_adj.shape}')
-        # print(f'time_step: {time_step}')
-        # print(f'freqs: {freqs}')
-        # print(power_spectrum_half[-10:])
-        #
-        # # plt.plot(rt_adj, power_spectrum_half)
-        # print(freqs[idx])
-        # print(power_spectrum_half[idx])
-        # print(idx)
-        # print(f'---')
-        # plt.plot(freqs[idx], power_spectrum_half[idx])
-        # plt.plot(freqs[idx], y_bell)
-        # plt.plot(freqs[idx], y_bell_dog, label='dog')
-        #
-        # plt.legend(loc='upper left')
-        #
-        # # plt.plot(rt_adj, power_spectrum_half)
-        #
-        # plt.show()
-
-        power_a = freq_amp_spec(rx[i, :], n_points)
-
-
-        power, findings = fourier_analysis(power_a, n_points, rt)
-
-        # ac += np.fft.ifft(power_spectrum)
-        # ac_p += power_spectrum_half
-        # stored_data.append([spread_99, spread_95, spread_68, spread_50, popt, std2, amp, mean_2])
-
-        # # ac += np.fft.ifft(power[0])
         ac_p += power
         stored_data.append([*findings])
 
     print(f'stored_data: {stored_data}')
-    # plt.plot(freqs[idx], power_spectrum_half[idx])
     power, findings = fourier_analysis(ac_p, n_points, rt)
+    stored_data.append([*findings])
+    # plt.show()
+    # len(stored_data) should be 1 + n_species
 
-    ac = ac / n_species
-    ac = np.fft.fftshift(ac)
-    divisor = np.concatenate(([1], np.arange(1, n_points), np.arange(n_points, 0, -1)))
-    ac = ac / divisor / np.std(rx) ** 2
-    ac = np.fft.fftshift(ac)
-
-    ac_half = ac[:ac.size // 2]
-    ac_half = np.real(ac_half)
-
-    plt.plot(rt, ac_half)
-    plt.show()
-
-    return ac_half
+    return stored_data
 
 
 def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
@@ -513,11 +412,11 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
     rt, rx = resample(t[0, :], x, tau.mean())
     print(f'resample took {round(time.time() - e, 2)}')
 
-    autoc = autocorrelate(rt, rx)
-    offset = 100
-    [peaks, locs] = find_peaks(autoc[offset:])
+    save_data = autocorrelate(rt, rx)
+    # offset = 100
+    # [peaks, locs] = find_peaks(autoc[offset:])
 
-    return rt, rx, peaks, autoc
+    return rt, rx, save_data
 
 
 
