@@ -214,7 +214,7 @@ def autocorrelate(rt, rx):
     ac = np.zeros(2 * n_points, dtype=complex)
     ac_p = np.zeros(2 * n_points, dtype=complex)
 
-
+    stored_data = []
 
     for i in range(n_species):
         # for every species,,,
@@ -250,6 +250,27 @@ def autocorrelate(rt, rx):
                                method='dogbox')
         y_bell_dog = gaussian(freqs[idx], *popt)
 
+        pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
+        cdf_freq = np.cumsum(pdf_freq)
+        confidence = 0.05
+        indices_05 = np.where((cdf_freq >= 0.05) & (cdf_freq <= 0.95))[0]
+        indices_15 = np.where((cdf_freq >= 0.15) & (cdf_freq <= 0.85))[0]
+        indices_25 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
+        min_index_05, max_index_05 = indices_05[0], indices_05[-1]
+        min_index_15, max_index_15 = indices_15[0], indices_15[-1]
+        min_index_25, max_index_25 = indices_25[0], indices_25[-1]
+
+        spread_05 = freqs[max_index_05] - freqs[min_index_05]
+        spread_15 = freqs[max_index_15] - freqs[min_index_15]
+        spread_25 = freqs[max_index_25] - freqs[min_index_25]
+
+        print(f'cum_sum cdf: {cdf_freq}')
+        print(f'spread_05: {spread_05}')
+        print(f'spread_15: {spread_15}')
+        print(f'spread_25: {spread_25}')
+
+
+
         # print(f'popt: {popt}')
         # print(f'pcov: {pcov}')
         print(f'amp: {amp}')
@@ -284,6 +305,8 @@ def autocorrelate(rt, rx):
 
         ac += np.fft.ifft(power_spectrum)
         ac_p += power_spectrum_half
+        stored_data.append([spread_05, spread_15, spread_25, popt, std2, amp, mean_2])
+    print(f'stored_data: {stored_data}')
     plt.plot(freqs[idx], power_spectrum_half[idx])
 
     ac = ac / n_species
