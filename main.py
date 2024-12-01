@@ -4,10 +4,13 @@ import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
+from scipy.optimize import curve_fit
 import math
+import time
 # pip install numpy
 # pip install matplotlib
 # python -m pip install scipy
+
 
 # following tutorial
 # https://www.youtube.com/watch?v=MM3cBamj1Ms
@@ -91,9 +94,7 @@ def calc_rate(x, p):
 
 
 
-
-
-def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
+def full_gillespie(rvf, stoich_mat, p, n, x0=None):
     """
     Performs entire Gillespie simulation
     :param x0: Column vector of initial conditions
@@ -110,17 +111,20 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
 
 
     # Setup matrix to store our output data.
-    x = np.hstack([x0, np.zeros((x0.size, n * 10))])
+    x = np.hstack([x0, np.zeros((x0.size, n))])
     # Matrix to store times
-    t = np.zeros((1, (n*10)+1))
+    t = np.zeros((1, n+1))
     # Matrix to store time intervals
-    tau = np.zeros((1, (n*10)))
+    tau = np.zeros((1, n))
 
-    # for i in range(n):
-    i = 0
-    while t[0, i] < min_time:
+    timer = np.zeros((1, n+1))
+    # Total: 24459
+
+    for i in range(n):
+        # s = time.perf_counter_ns()
         lamd = rvf(x[:, i], p)
-        lamd_tot = np.sum(lamd)
+        lamd_tot = sum(lamd)
+        # lamd_tot = np.sum(lamd)
         r_t = np.random.random()
         # Calculate time to next interval
         T = -1 * math.log(r_t) / lamd_tot
@@ -137,19 +141,17 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=20):
 
         # Update our time!
         t[0, i+1] = t[0, i] + T
-        print(f'current t: {t[0, i+1]}')
         # Update our stoich.
         x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
         tau[0, i] = T
 
-        i += 1
+        # e = time.perf_counter_ns()
+        # print(f'time taken: {e - s}')
+        # timer[0, i] = e - s
+    # print(f'timer: {timer}')
+    # print(f'average: {np.average(timer)}')
+    # print(f'percentage of total time: {(np.average(timer) / 22000) * 100}')
 
-    print(f'cutting off: {t[0, i+1:]}')
-    print(f'cutting off: {x[:, i + 1:]}')
-    print(f'cutting off: {tau[0, i + 1:]}')
-    t = t[:, :i+1]
-    x = x[:, :i+1]
-    tau = tau[:, :i]
     return t, x, tau
 
 
@@ -196,7 +198,8 @@ def resample(t, x, t_mean):
 #     # print(f'rx: {rx}')
 #     result = np.correlate(rx[0, :], rx[0, :], mode='full')
 #     return result[result.size//2:]
-
+def gaussian(x, amplitude, mean, stddev):
+    return amplitude * np.exp(-((x - mean)**2) / (2 * stddev**2))
 
 def autocorrelate(rt, rx):
     """
@@ -211,14 +214,102 @@ def autocorrelate(rt, rx):
 
     rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
     ac = np.zeros(2 * n_points, dtype=complex)
+    ac_p = np.zeros(2 * n_points, dtype=complex)
 
+    stored_data = []
 
     for i in range(n_species):
         # for every species,,,
+        # Helpful stack overflow
+        # https://stackoverflow.com/questions/15382076/plotting-power-spectrum-in-python
+        # frx = np.fft.fft(rx[i, :], n=2 * n_points)
         frx = np.fft.fft(rx[i, :], n=2 * n_points)
+
         power_spectrum = frx * np.conj(frx)
+        # power_spectrum_half = np.abs(np.real(frx[1:frx.size // 2])) ** 2
+        # power_spectrum_half = np.abs(frx[1000:frx.size // 2]) ** 2
+        power_spectrum_half = np.abs(frx) ** 2
+
+        rt_adj = rt[1000:frx.size // 2]
+        # rx_adj = rx[i, 1000:]
+        plt.figure(figsize=(6, 6))
+        time_step = rt_adj[2] - rt_adj[1]
+
+        freqs = np.fft.fftfreq(power_spectrum_half.size, time_step)
+        idx = np.argsort(freqs)[freqs.size // 2 + 1:freqs.size // 2 + 100]
+        avg = np.average(freqs[idx], weights=power_spectrum_half[idx])
+        var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
+        var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
+        std = math.sqrt(var)
+        std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+        amp = max(power_spectrum_half[idx])
+        mean2_index = np.argmax(power_spectrum_half[idx])
+        mean_2 = freqs[mean2_index]
+
+        y_bell = gaussian(freqs[idx], amp, mean_2, std)
+        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std],
+                               method='dogbox')
+        y_bell_dog = gaussian(freqs[idx], *popt)
+
+        pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
+        cdf_freq = np.cumsum(pdf_freq)
+        indices_99 = np.where((cdf_freq >= 0.005) & (cdf_freq <= 0.995))[0]
+        indices_95 = np.where((cdf_freq >= 0.025) & (cdf_freq <= 0.975))[0]
+        indices_68 = np.where((cdf_freq >= 0.16) & (cdf_freq <= 0.84))[0]
+        indices_50 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
+        min_index_99, max_index_99 = indices_99[0], indices_99[-1]
+        min_index_95, max_index_95 = indices_95[0], indices_95[-1]
+        min_index_68, max_index_68 = indices_68[0], indices_68[-1]
+        min_index_50, max_index_50 = indices_50[0], indices_50[-1]
+
+        spread_99 = freqs[max_index_99] - freqs[min_index_99]
+        spread_95 = freqs[max_index_95] - freqs[min_index_95]
+        spread_68 = freqs[max_index_68] - freqs[min_index_68]
+        spread_50 = freqs[max_index_50] - freqs[min_index_50]
+
+        print(f'cum_sum cdf: {cdf_freq}')
+        print(f'spread_99: {spread_99}')
+        print(f'spread_95: {spread_95}')
+        print(f'spread_68: {spread_68}')
+        print(f'spread_50: {spread_50}')
+
+        # print(f'popt: {popt}')
+        # print(f'pcov: {pcov}')
+        print(f'amp: {amp}')
+        print(f'mean_2: {mean_2}')
+
+        print(f'std2: {std2}')
+        print(f'std: {std}')
+        print(f'var: {var}')
+        print(f'avg: {avg}')
+        # idx = np.argsort(power_spectrum_half)
+        print(f'power spectrum shape: {power_spectrum_half}')
+        print(f'rt shape: {rt_adj.shape}')
+        # print(f'rx shape: {rx_adj.shape}')
+        print(f'time_step: {time_step}')
+        print(f'freqs: {freqs}')
+        print(power_spectrum_half[-10:])
+
+        # plt.plot(rt_adj, power_spectrum_half)
+        print(freqs[idx])
+        print(power_spectrum_half[idx])
+        print(idx)
+        print(f'---')
+        plt.plot(freqs[idx], power_spectrum_half[idx])
+        plt.plot(freqs[idx], y_bell)
+        plt.plot(freqs[idx], y_bell_dog, label='dog')
+
+        plt.legend(loc='upper left')
+
+        # plt.plot(rt_adj, power_spectrum_half)
+
+        plt.show()
 
         ac += np.fft.ifft(power_spectrum)
+        ac_p += power_spectrum_half
+        stored_data.append([spread_99, spread_95, spread_68, spread_50, popt, std2, amp, mean_2])
+    print(f'stored_data: {stored_data}')
+    plt.plot(freqs[idx], power_spectrum_half[idx])
 
     ac = ac / n_species
     ac = np.fft.fftshift(ac)
@@ -226,13 +317,13 @@ def autocorrelate(rt, rx):
     ac = ac / divisor / np.std(rx) ** 2
     ac = np.fft.fftshift(ac)
 
-    ac_half = ac[:ac.size//2]
+    ac_half = ac[:ac.size // 2]
     ac_half = np.real(ac_half)
+
+    plt.plot(rt, ac_half)
+    plt.show()
+
     return ac_half
-
-
-
-
 
 
 def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
@@ -269,7 +360,8 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
 
     # Adds parameters to p if they are given
     if p is None:
-        p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
+        p = np.array([lambda_m, lambda_p, beta_m, beta_p, h, K, 10, 0.01])  # Parameter vector for ODE solver
+        # p = [lambda_m, lambda_p, beta_m, beta_p, h, K, 10, 0.01]
     else:
         p = [lambda_m, lambda_p, beta_m, beta_p, h, K, *p]
 
@@ -279,12 +371,15 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
     if not stoich_mat:
         # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3, prod_P3, deg_P3
         stoich_mat = [
-            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
         # Rows: m1, pf1, m2, pf2, m3, pf3
         # Shape: (6 x 12) 6 species, 12 reactions.
@@ -292,14 +387,19 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
 
     # Default values for x0_g if none given
     if x0_g is None:
-        x0_g = np.zeros((6, 1))
+        x0_g = np.zeros((9, 1))
         x0_g[0, 0] = 10
 
 
     # update calc_rate to take our constants as an input parameter
 
+    s = time.time()
+    print(f'starting gillespie')
     t, x, tau = full_gillespie(rvf, stoich_mat, p, num_iterations, x0_g)
+    e = time.time()
+    print(f'gillespie took {round(e - s, 2)}')
     rt, rx = resample(t[0, :], x, tau.mean())
+    print(f'resample took {round(time.time() - e, 2)}')
 
     autoc = autocorrelate(rt, rx)
     offset = 100

@@ -5,6 +5,10 @@ import seaborn as sns
 import pandas as pd
 import h5pandas as h5pd
 import main
+import cProfile
+import pstats
+from pstats import SortKey
+import re
 
 # = General Layout of Experiments =
 # RVFs are for stochastic simulations, dYdt are for deterministic.
@@ -337,7 +341,8 @@ def rvf_exp1a(x, p):
 
     prod_h = h_generation + stoich * x[7]
     deg_h = h_degrade * x[8] + (x[8] * V_max) / (x[8] + K)
-
+    # tot = prod_m1 + deg_m1 + prod_p1 + deg_p1 + prod_m2 + deg_m2 + prod_p2 + deg_p2 + prod_m3 + deg_m3 + prod_p3 + deg_p3 + prod_m4 + deg_m4 + prod_p4 + deg_p4 + prod_h + deg_h
+    # return np.array()
     return [prod_m1, deg_m1, prod_p1, deg_p1, prod_m2, deg_m2, prod_p2, deg_p2,
             prod_m3, deg_m3, prod_p3, deg_p3, prod_m4, deg_m4, prod_p4, deg_p4,
             prod_h, deg_h]
@@ -368,7 +373,15 @@ def exp1a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 100000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1a, x0_g=x0_g, p=[10, 0.01])
+    # cProfile.run('main.single_pass(0.277, 380, 2, 600000, K=7, rvf=rvf_exp1a)', 'restats')
+    # p = pstats.Stats('restats')
+    # p.strip_dirs().sort_stats(SortKey.CUMULATIVE).print_stats()
+    #
+    #
+    # p.print_callers()
+    # p.strip_dirs()
+    # print(f'profiled!')
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1a, x0_g=x0_g, p=[10, 0.01])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -481,7 +494,7 @@ def exp1b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 300000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
+    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp1b, x0_g=x0_g, p=[10, 100])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1232,8 +1245,8 @@ def plot_gfp_stoch():
     plt.figure(figsize=(8, 8))
     # h2o2_wrapper_stoch(plt)
     # gfp_wrapper_stoch(plt)
-    # exp1a_wrapper_stoch(plt)
-    exp1b_wrapper_stoch(plt)
+    exp1a_wrapper_stoch(plt)
+    # exp1b_wrapper_stoch(plt)
     # exp2a_wrapper_stoch(plt)
     # exp2b_wrapper_stoch(plt)
     # exp3a_wrapper_stoch(plt)
