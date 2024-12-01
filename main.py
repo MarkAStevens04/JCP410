@@ -216,7 +216,7 @@ def freq_amp_spec(rx, n_points):
 
 
 
-def fourier_analysis(rt, rx, n_points):
+def fourier_analysis(power, n_points, rt):
     """
     Performs all fourier analysis
     :return:
@@ -225,8 +225,9 @@ def fourier_analysis(rt, rx, n_points):
     # y_bell
     # plt stuff
     # prints
+    # Parallelize fourier transformation
 
-    power_spectrum_half = freq_amp_spec(rx, n_points)
+    power_spectrum_half = power
     # power_spectrum_half = power_spectrum_half
 
 
@@ -239,10 +240,11 @@ def fourier_analysis(rt, rx, n_points):
     plt.figure(figsize=(6, 6))
     time_step = rt_adj[2] - rt_adj[1]
 
-    freqs = np.fft.fftfreq(power_spectrum_half.size, time_step)
+    freqs = np.fft.fftfreq(n_points, time_step)
 
     print(f'freqs size: {freqs.shape}')
-    idx = np.argsort(freqs)[freqs.size // 2 + 1:freqs.size // 2 + 100]
+    print(f'n points: {n_points}')
+    idx = np.argsort(freqs)[n_points // 2 + 1:n_points // 2 + 100]
     # idx = np.argsort(freqs)[:]
 
     # avg = np.average(freqs[idx], weights=power_spectrum_half[idx])
@@ -310,7 +312,7 @@ def autocorrelate(rt, rx):
 
     rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
     ac = np.zeros(2 * n_points, dtype=complex)
-    ac_p = np.zeros(2 * n_points, dtype=complex)
+    ac_p = np.zeros(n_points + 1, dtype=float)
 
     stored_data = []
 
@@ -404,19 +406,22 @@ def autocorrelate(rt, rx):
         #
         # plt.show()
 
-        power, findings = fourier_analysis(rt, rx[i, :], n_points)
+        power_a = freq_amp_spec(rx[i, :], n_points)
+
+
+        power, findings = fourier_analysis(power_a, n_points, rt)
 
         # ac += np.fft.ifft(power_spectrum)
         # ac_p += power_spectrum_half
         # stored_data.append([spread_99, spread_95, spread_68, spread_50, popt, std2, amp, mean_2])
 
         # # ac += np.fft.ifft(power[0])
-        # ac_p += power
+        ac_p += power
         stored_data.append([*findings])
 
     print(f'stored_data: {stored_data}')
     # plt.plot(freqs[idx], power_spectrum_half[idx])
-    power, findings = fourier_analysis(rt, rx[i, :], n_points)
+    power, findings = fourier_analysis(ac_p, n_points, rt)
 
     ac = ac / n_species
     ac = np.fft.fftshift(ac)
