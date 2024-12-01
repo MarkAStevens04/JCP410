@@ -208,8 +208,8 @@ def freq_amp_spec(rx, n_points):
     frx = np.fft.fft(rx, n=2 * n_points)
 
     power_spectrum = frx * np.conj(frx)
-    # power_spectrum_half = np.abs(np.real(frx[1:frx.size // 2])) ** 2
-    # power_spectrum_half = np.abs(frx[1000:frx.size // 2]) ** 2
+    # needs to be squared to add power spectra together
+    # Curves tend to fit better for non-squared version
     power_spectrum_half = np.abs(frx) ** 2
     return power_spectrum_half[:power_spectrum_half.size // 2 + 1]
 
@@ -258,12 +258,6 @@ def fourier_analysis(rt, rx, n_points):
     popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
                            method='dogbox')
     y_bell_dog = gaussian(freqs[idx], *popt)
-    popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
-                           method='trf')
-    y_bell_dog_2 = gaussian(freqs[idx], *popt)
-    popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
-                           method='lm')
-    y_bell_dog_3 = gaussian(freqs[idx], *popt)
 
     pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
     cdf_freq = np.cumsum(pdf_freq)
@@ -288,8 +282,6 @@ def fourier_analysis(rt, rx, n_points):
     plt.plot(freqs[idx], power_spectrum_half[idx])
     plt.plot(freqs[idx], y_bell)
     plt.plot(freqs[idx], y_bell_dog, label='dog')
-    plt.plot(freqs[idx], y_bell_dog_2, label='trf')
-    plt.plot(freqs[idx], y_bell_dog_3, label='lm')
 
     plt.legend(loc='upper left')
 
