@@ -7,9 +7,26 @@ from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 import math
 import time
+import logging
+
+import multiprocessing
 # pip install numpy
 # pip install matplotlib
 # python -m pip install scipy
+logger = logging.getLogger(__name__)
+
+class CustomAdapter(logging.LoggerAdapter):
+    """
+    This example adapter expects the passed in dict-like object to have a
+    'connid' key, whose value in brackets is prepended to the log message.
+    """
+    def process(self, msg, kwargs):
+        p_id = multiprocessing.current_process()
+        # p_id = 'it worked!'
+        # return '[%s] %s' % (p_id, msg), kwargs
+        return '%(process)d %(message)s', kwargs
+
+adapter = CustomAdapter(logger)
 
 
 # following tutorial
@@ -274,6 +291,8 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     power = power_spectrum_half
 
     findings = [spread_99, spread_95, spread_68, spread_50, popt, std2, amp, mean_2]
+    adapter.info(f'Found findings!')
+    adapter.debug(f'Curring findings: {findings}')
 
     # plt.plot(freqs[idx], power_spectrum_half[idx])
     # plt.plot(freqs[idx], y_bell)

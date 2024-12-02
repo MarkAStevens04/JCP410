@@ -11,6 +11,8 @@ from pstats import SortKey
 import re
 import logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 # = General Layout of Experiments =
 # RVFs are for stochastic simulations, dYdt are for deterministic.
@@ -1284,11 +1286,36 @@ def plot_gfp_stoch():
 # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
 
 
+class FixedWidthFormatter(logging.Formatter):
+    def format(self, record):
+        # Adjust the width of levelname to 10 characters
+        record.levelname = record.levelname.ljust(8)  # Pad level name to 10 characters
+        record.module = record.module.ljust(20)
+        return super().format(record)
+
+
+
+
+
 
 
 if __name__ == "__main__":
     # plot_gfp_det()
-    logging.basicConfig(filename='TestLogging.log', level=logging.INFO)
+
+    # Each log completely erases previous log.
+    # logging.basicConfig(filename='TestLogging.log', level=logging.DEBUG, filemode='w', format='%(levelname)s'.rjust(10, ' ') + ': %(asctime)s %(message)s' + 't', datefmt='%Y-%m-%d %H:%M:%S | ')
+    file_handler = logging.FileHandler('TestLogging.log', mode='w')
+    file_handler.setLevel(logging.DEBUG)
+
+    # Set the custom formatter
+    formatter = FixedWidthFormatter('%(levelname)s: %(asctime)s %(module)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S | ')
+    file_handler.setFormatter(formatter)
+
+    # Add the handler to the logger
+    logging.basicConfig(level=logging.DEBUG, handlers=[file_handler])
+
     logger.info('Started!')
+    logger.warning(f'Test!')
+    logger.log(10, 'SLAAYYY')
     plot_gfp_stoch()
     logger.info('Completed!')
