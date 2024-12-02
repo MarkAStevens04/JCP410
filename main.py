@@ -276,10 +276,12 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
 
     pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
     cdf_freq = np.cumsum(pdf_freq)
-    indices_99 = np.where((cdf_freq >= 0.005) & (cdf_freq <= 0.995))[0]
+    indices_99 = np.where((cdf_freq >= 0.000000000000000005) & (cdf_freq <= 0.99999999999999999999999999999995))[0]
     indices_95 = np.where((cdf_freq >= 0.025) & (cdf_freq <= 0.975))[0]
     indices_68 = np.where((cdf_freq >= 0.16) & (cdf_freq <= 0.84))[0]
     indices_50 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
+    print(f'indices_99 extended: {indices_99[:10000000]}')
+
     min_index_99, max_index_99 = indices_99[0], indices_99[-1]
     min_index_95, max_index_95 = indices_95[0], indices_95[-1]
     min_index_68, max_index_68 = indices_68[0], indices_68[-1]

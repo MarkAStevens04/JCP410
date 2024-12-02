@@ -1,71 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy as sp
-from scipy.integrate import odeint
-from scipy.integrate import solve_ivp
-from scipy.signal import find_peaks
-import math
-import main
-import os
-import datetime
-import h5py
-import multiprocessing
-from multiprocessing import Process
-import time
-import traceback
-import logging
-
-logger = logging.getLogger(__name__)
-
-# pip install h5py
-
-
-# Beta should go from 1 to 0.01
-# Alpha goes from 1 to 100
-import main
-
-
-def open_directories(a, b):
-    """
-    Opens the directory and creates an output file
-    :param alpha:
-    :param beta:
-    :return:
-    """
-    dir_name = f'Trials/Test_1/Trial {str(b).replace(".", "-")} {str(a).replace(".", "-")}'
-    try:
-        os.mkdir(dir_name)
-        print(f"Directory '{dir_name}' created successfully.")
-    except FileExistsError:
-        logger.exception(f"Directory '{dir_name}' already exists.")
-        print(f"Directory '{dir_name}' already exists.")
-
-    main_tracker = f'{dir_name}/output.txt'
-    m = open(main_tracker, 'a+')
-    m.writelines(f'Starting trials: {datetime.datetime.now()} \n')
-    return m, dir_name
-
-
-def read_data():
-    """
-    open the h5py data!
-    :return:
-    """
-    with h5py.File('experimental_results_long_four.h5', 'r') as f:
-        g_names = [name for name in f if isinstance(f[name], h5py.Group)]
-        group = f['param_1-0_1-0']
-        period_data = group['period'][:]
-        precision_data = group['precision'][:]
-        concentration_data = group['trial_0_concentrations']
-
-        print(f'period data: {period_data}')
-        print(f'precision data: {precision_data}')
-        print(f'names: {g_names}')
-        print(f'avg period: {np.average(period_data)}')
-        print(f'avg precision: {np.average(precision_data)}')
-        print(f'concentrations: {concentration_data}')
-
-
 def thread_run(trial_num, seed, queue, alpha, beta, p, dset_queue=None):
     """
     Runs a single thread of parameters.
@@ -113,7 +45,8 @@ def thread_run(trial_num, seed, queue, alpha, beta, p, dset_queue=None):
             print(f'putting: {[*save_data]}')
 
         # queue.put((period, precision))
-        queue.put([*save_data], timeout=300)
+        # queue.put([*save_data], timeout=300)
+        queue.put(tuple(save_data), timeout=300)
     except KeyboardInterrupt as e:
         print(f'quitting...')
         raise Exception(KeyboardInterrupt) from e
@@ -127,7 +60,7 @@ def thread_run(trial_num, seed, queue, alpha, beta, p, dset_queue=None):
         print(f'trial num: {trial_num}')
 
         traceback.print_exc()
-        queue.put([])
+        queue.put(())
 
 
 def grid_run(beta_range=(0.01, 1), p=None, file_name='experiments/experimental_results_long.h5'):
@@ -208,6 +141,9 @@ def grid_run(beta_range=(0.01, 1), p=None, file_name='experiments/experimental_r
 
                     for proc in procs:
                         print(proc.join())
+                        print(proc.exitcode)
+                        # proc.close()
+
 
                     print(procs)
 
@@ -249,6 +185,8 @@ def grid_run(beta_range=(0.01, 1), p=None, file_name='experiments/experimental_r
                             ret = dset_ret.get()
 
                     queue.close()
+                    if dset_queue:
+                        dset_queue.close()
 
 
 
@@ -268,63 +206,3 @@ def grid_run(beta_range=(0.01, 1), p=None, file_name='experiments/experimental_r
 
     end = time.time()
     print(f'took {end - start} seconds!')
-
-    # # Start by opening the directories
-    # # m is our output.txt file writer!
-    # m, dir_name = open_directories(a, b)
-    # for n in range(trials_per_bin):
-    #     rt, rx, peaks, autoc = main.single_pass(b, a, 1, 100000)
-    #     if len(peaks) == 0:
-    #         # Unable to find any peaks
-    #         print(f'no peaks :(')
-    #         period = 0
-    #         precision = 0
-    #     else:
-    #         # Found some peaks!
-    #         print(f'periods: {rt[peaks]}')
-    #         period = rt[peaks[0]]
-    #         precision = autoc[peaks[0]]
-    #     m.writelines(f'{str(n).ljust(5)}: {period}, {precision} \n')
-    #
-    #
-    #
-    # m.close()
-    #     break
-    # break
-
-    print(f'betas: {betas}')
-
-
-if __name__ == "__main__":
-    # rt, rx, peaks, autoc = main.single_pass(0.277, 380, 1, 100000)
-    #
-    # if len(peaks) == 0:
-    #     # Unable to find any peaks
-    #     print(f'no peaks :(')
-    #     period = 0
-    #     precision = 0
-    # else:
-    #     # Found some peaks!
-    #     print(f'periods: {rt[peaks]}')
-    #     period = rt[peaks[0]]
-    #     precision = autoc[peaks[0]]
-    #
-    # print(f'period: {period}')
-    # print(f'precision: {precision}')
-    #
-    # # - Regular Graph -
-    # p1_r = rx[1, :]
-    # p2_r = rx[3, :]
-    # p3_r = rx[5, :]
-    #
-    # plt.plot(rt, p1_r)
-    # plt.plot(rt, p2_r)
-    # plt.plot(rt, p3_r)
-
-    # - Autocorrelation graph -
-    # plt.plot(rt, autoc)
-
-    # plt.show()
-
-    # read_data()
-    grid_run()

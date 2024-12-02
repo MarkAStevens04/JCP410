@@ -218,6 +218,9 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
         logger.warning(
             f'----------------------------------------------------------------------------------------------------')
         logger.exception(f'Error with calculating std! Will try to prevail...')
+
+        logger.warning(f'power spectrum half: {power_spectrum_half}')
+        logger.warning(f'idx: {idx}')
         logger.warning(
             f'----------------------------------------------------------------------------------------------------')
 
@@ -258,22 +261,25 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     indices_95 = np.where((cdf_freq >= 0.025) & (cdf_freq <= 0.975))[0]
     indices_68 = np.where((cdf_freq >= 0.16) & (cdf_freq <= 0.84))[0]
     indices_50 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
-    if len(indices_99) != 2:
-        logger.log(f'Unable to find two indices with 99 spread!')
-        logger.log(f'cdf_freq: {cdf_freq}')
-        indices_99 = [0, len(cdf_freq) - 1]
-    if len(indices_95) != 2:
-        logger.log(f'Unable to find two indices with 95 spread!')
-        logger.log(f'cdf_freq: {cdf_freq}')
-        indices_95 = [0, len(cdf_freq) - 1]
-    if len(indices_68) != 2:
-        logger.log(f'Unable to find two indices with 68 spread!')
-        logger.log(f'cdf_freq: {cdf_freq}')
-        indices_68 = [0, len(cdf_freq) - 1]
-    if len(indices_50) != 2:
-        logger.log(f'Unable to find two indices with 50 spread!')
-        logger.log(f'cdf_freq: {cdf_freq}')
-        indices_50 = [0, len(cdf_freq) - 1]
+    if indices_99.size < 2:
+        logger.warning(f'Unable to find two indices with 99 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_99 = [0, 0]
+    if indices_95.size < 2:
+        logger.warning(f'Unable to find two indices with 95 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_95 = [0, 0]
+        logger.info(f'will set indices to bounds... {indices_95}, {len(cdf_freq)}')
+    if indices_68.size < 2:
+        logger.warning(f'Unable to find two indices with 68 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_68 = [0, 0]
+        logger.info(f'will set indices to bounds... {indices_68}, {len(cdf_freq)}')
+    if indices_50.size < 2:
+        logger.warning(f'Unable to find two indices with 50 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_50 = [0, 0]
+        logger.info(f'will set indices to bounds... {indices_50}, {len(cdf_freq)}')
 
     min_index_99, max_index_99 = indices_99[0], indices_99[-1]
     min_index_95, max_index_95 = indices_95[0], indices_95[-1]

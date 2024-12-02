@@ -6,7 +6,7 @@ import pandas as pd
 import h5pandas as h5pd
 import main
 
-EXP_DIRECTORY = 'Trials/Paper_Extension/attempt103_1b.h5'
+EXP_DIRECTORY = 'Trials/Paper_Extension/attempt347_1b.h5'
 
 def parse_params(name, reversed=True):
     """
@@ -38,6 +38,9 @@ def read_grid():
     open the h5py data!
     :return:
     """
+
+    name_index = ("STD", 7)
+
     with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
         # group = f['param_1-0_1-0']
