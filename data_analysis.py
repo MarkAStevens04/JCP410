@@ -33,13 +33,14 @@ def parse_params(name, reversed=True):
         return None, None
 
 
-def read_grid():
+def read_grid(reactant_name=None, axes=None, pos=None):
     """
     open the h5py data!
     :return:
     """
-
+    # Recall: findings = [spread_99, spread_95, spread_68, spread_50, popt - 1, popt - 2, popt - 3, std2, amp, mean_2]
     name_index = ("STD", 7)
+
 
     with h5py.File(EXP_DIRECTORY, 'r') as f:
         g_names = [name for name in f if isinstance(f[name], h5py.Group)]
@@ -71,20 +72,24 @@ def read_grid():
         all_alphas.sort()
         all_betas.sort()
 
-        print(f'all alphas: {all_alphas}')
-        print(f'all betas: {all_betas}')
+        # print(f'all alphas: {all_alphas}')
+        # print(f'all betas: {all_betas}')
 
 
-        df = pd.DataFrame(np.random.randn(len(all_alphas) * len(all_betas), 4), columns=["Alpha", "Beta", "Std", "S95"])
-        print(df)
+        df = pd.DataFrame(np.random.randn(len(all_alphas) * len(all_betas), 4), columns=["Alpha", "Beta", name_index[0], "S95"])
         for i, name in enumerate(g_names):
             alpha, beta = parse_params(name, reversed=False)
             group = f[name]
             # period_data = group['period'][:]
             # precision_data = group['precision'][:]
-            reactant_data = group['reactant_9'][:]
+
+            # get the reactant corresponding to reactant name
+            if reactant_name == None:
+                reactant_data = group['reactant_9'][:]
+            else:
+                reactant_data = group[reactant_name][:]
             # Recall: findings = [spread_99, spread_95, spread_68, spread_50, popt-1, popt-2, popt-3, std2, amp, mean_2]
-            std_reactant = reactant_data[:, 7]
+            std_reactant = reactant_data[:, name_index[1]]
             s95_reactant = reactant_data[:, 1]
 
             avg_std = np.average(std_reactant)
@@ -95,40 +100,86 @@ def read_grid():
             # df.iloc[i] = [alpha, beta, avg_period, avg_precision]
             df.iloc[i] = [alpha, beta, avg_std, avg_s95]
 
-        print(df)
 
-        glue = df.pivot(index="Beta", columns="Alpha", values="Std")
+        glue = df.pivot(index="Beta", columns="Alpha", values=name_index[0])
         # glue = df.pivot(index="Beta", columns="Alpha", values="S95")
 
         # Put names of rows and columns in scientific notation
-        if min(glue.columns) < 0.1:
-            glue.columns = pd.Index([f"{x:.4f}" for x in glue.columns])
+        if axes is None:
+            if min(glue.columns) < 0.1:
+                glue.columns = pd.Index([f"{x:.4f}" for x in glue.columns])
+            else:
+                glue.columns = pd.Index([f"{x:.1f}" for x in glue.columns])
+
+            if min(glue.index) < 0.1:
+                glue.index = pd.Index([f"{x:.4f}" for x in glue.index])
+            else:
+                glue.index = pd.Index([f"{x:.1f}" for x in glue.index])
         else:
             glue.columns = pd.Index([f"{x:.1f}" for x in glue.columns])
-
-        if min(glue.index) < 0.1:
-            glue.index = pd.Index([f"{x:.4f}" for x in glue.index])
-        else:
             glue.index = pd.Index([f"{x:.1f}" for x in glue.index])
 
         # sns.set(font_scale=1.5, rc={'text.usetex': True})
-        plt.figure(figsize=(10, 10))
-        g = sns.heatmap(glue, annot=True, fmt=".2f")
+        if axes is None:
+            plt.figure(figsize=(10, 10))
+            g = sns.heatmap(glue, annot=True, fmt=".2f")
+            plt.xlabel("$\\alpha$", fontsize=20)
+            plt.ylabel("$\\beta$", fontsize=20)
+        else:
+            print(f'wants to plot')
+            g = sns.heatmap(glue, ax=axes[pos], xticklabels=False, yticklabels=False)
+            axes[pos].set_title(reactant_name)
+            # axes[0, 0].xlabel("$\\alpha$", fontsize=20)
+            # axes[0, 0].ylabel("$\\beta$", fontsize=20)
+
+
         # g2 = sns.heatmap(glue, annot=True, cmap="crest_r")
 
         # sns.set_context("notebook", font_scale=2)
-        plt.xlabel("$\\alpha$", fontsize=20)
-        plt.ylabel("$\\beta$", fontsize=20)
+
         # plt.title("Mean Difference in 95th percentile from Variations in $\\alpha$ and $\\beta$", fontsize=20)
-        plt.title("Mean Standard Deviation from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+        if reactant_name == None:
+            plt.title(f"Mean {name_index[0]} from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+            plt.subplots_adjust(bottom=0.2, left=0.2)
+        else:
+            # plt.title(f"Mean {name_index[0]} from Variations in $\\alpha$ and $\\beta$ {reactant_name}", fontsize=20)
+            pass
 
         # Add padding
-        plt.subplots_adjust(bottom=0.2, left=0.2)
+
+
+        if reactant_name == None:
+            plt.show()
 
         # glue_2 = df.pivot(index="Beta", columns="Alpha", values="Period")
         # g2 = sns.heatmap(glue_2, annot=True, cmap="crest")
 
-        plt.show()
+        # plt.show()
+
+
+
+def plot_all_reactants():
+    """
+    Plots the attribute for all reactants
+    :return:
+    """
+    # reactant names: [m1, P1, m2, P2, m3, P3, m4, P4, h, Total]
+    fig, axes = plt.subplots(3, 3)
+    print(f'axes: {axes}')
+    for i, n in enumerate(['reactant_0', 'reactant_1', 'reactant_2', 'reactant_3', 'reactant_4', 'reactant_5', 'reactant_6', 'reactant_7', 'reactant_8']):
+
+        read_grid(n, axes, (i // 3, i % 3))
+    fig.suptitle(f"Mean STD from Variations in $\\alpha$ and $\\beta$", fontsize=20)
+    fig.supxlabel("$\\alpha$", fontsize=20)
+    fig.supylabel("$\\beta$", fontsize=20)
+
+    # reads the final reactant and plots on separate graph
+    read_grid()
+
+    plt.show()
+
+
+
 
 
 def plot_stochastic():
@@ -451,5 +502,7 @@ if __name__ == "__main__":
     # plot_stochastic()
     # plot_gfp_stoch()
 
-    read_grid()
+    # read_grid()
+    plot_all_reactants()
+
     # read_full_gfp_stoch()
