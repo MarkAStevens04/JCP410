@@ -6,6 +6,9 @@ from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 import math
+import time
+import traceback
+ERROR_DIRECTORY = 'errors.txt'
 # pip install numpy
 # pip install matplotlib
 # python -m pip install scipy
@@ -206,24 +209,24 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     try:
         std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
     except:
-        e = open(ERROR_DIRECTORY, 'a')
-        e.write(
-            f'---------------------------------------------------------------------------------------------------- \n')
-        e.write(f'\n')
-        e.write(f'ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR \n')
-        e.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        e.write(f"Error with calculating std! Will try to prevail... \n")
-        e.write(f'\n')
-        e.write(f'{traceback.format_exc()}')
-        e.write(f'\n')
+        with open(ERROR_DIRECTORY, 'a') as e:
+        # e = open(ERROR_DIRECTORY, 'a')
+            e.write(
+                f'---------------------------------------------------------------------------------------------------- \n')
+            e.write(f'\n')
+            e.write(f'ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR \n')
+            e.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            e.write(f"Error with calculating std! Will try to prevail... \n")
+            e.write(f'\n')
+            e.write(f'{traceback.format_exc()}')
+            e.write(f'\n')
 
-        e.write(
-            f'---------------------------------------------------------------------------------------------------- \n')
-        e.write(f'\n')
+            e.write(
+                f'---------------------------------------------------------------------------------------------------- \n')
+            e.write(f'\n')
 
-        e.write(f'\n')
+            e.write(f'\n')
 
-        e.close()
         traceback.print_exc()
         print(f'error with calculating std2! Will try to prevail...')
         std2 = 0
@@ -238,27 +241,28 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
         popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
                                method='dogbox')
     except:
-        e = open(ERROR_DIRECTORY, 'a')
-        e.write(
-            f'---------------------------------------------------------------------------------------------------- \n')
-        e.write(f'\n')
-        e.write(f'ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR \n')
-        e.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        e.write(f"Error with calculating popt! Will try to prevail... \n")
-        e.write(f'\n')
-        e.write(f'{traceback.format_exc()}')
-        e.write(f'\n')
+        with open(ERROR_DIRECTORY, 'a') as e:
+        # e = open(ERROR_DIRECTORY, 'a')
+            e.write(
+                f'---------------------------------------------------------------------------------------------------- \n')
+            e.write(f'\n')
+            e.write(f'ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR \n')
+            e.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            e.write(f"Error with calculating popt! Will try to prevail... \n")
+            e.write(f'\n')
+            e.write(f'{traceback.format_exc()}')
+            e.write(f'\n')
 
-        e.write(
-            f'---------------------------------------------------------------------------------------------------- \n')
-        e.write(f'\n')
+            e.write(
+                f'---------------------------------------------------------------------------------------------------- \n')
+            e.write(f'\n')
 
-        e.write(f'\n')
+            e.write(f'\n')
 
-        e.close()
         traceback.print_exc()
         print(f'error with calculating popt! Will try to prevail...')
-        popt = (None, None, None)
+        popt = [0.0, 0.0, 0.0]
+        # popt = (None, None, None)
 
     # y_bell_dog = gaussian(freqs[idx], *popt)
 

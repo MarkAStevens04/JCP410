@@ -9,6 +9,8 @@ import cProfile
 import pstats
 from pstats import SortKey
 import re
+import logging
+logger = logging.getLogger(__name__)
 
 # = General Layout of Experiments =
 # RVFs are for stochastic simulations, dYdt are for deterministic.
@@ -1286,4 +1288,7 @@ def plot_gfp_stoch():
 
 if __name__ == "__main__":
     # plot_gfp_det()
+    logging.basicConfig(filename='TestLogging.log', level=logging.INFO)
+    logger.info('Started!')
     plot_gfp_stoch()
+    logger.info('Completed!')
