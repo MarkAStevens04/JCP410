@@ -10,8 +10,14 @@ import pstats
 from pstats import SortKey
 import re
 import logging
+import logging.handlers
+import multiprocessing_logging
+
+
 logger = logging.getLogger(__name__)
+root = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+root.setLevel(logging.WARNING)
 
 
 # = General Layout of Experiments =
@@ -1295,6 +1301,13 @@ class FixedWidthFormatter(logging.Formatter):
 
 
 
+class ExperimentFilter(logging.Filter):
+    def __init__(self, c):
+        super().__init__()
+        self.c = c
+
+    def filter(self, record):
+        return self.c
 
 
 
@@ -1304,18 +1317,58 @@ if __name__ == "__main__":
 
     # Each log completely erases previous log.
     # logging.basicConfig(filename='TestLogging.log', level=logging.DEBUG, filemode='w', format='%(levelname)s'.rjust(10, ' ') + ': %(asctime)s %(message)s' + 't', datefmt='%Y-%m-%d %H:%M:%S | ')
-    file_handler = logging.FileHandler('TestLogging.log', mode='w')
+    # file_handler = logging.FileHandler('Logs/TestLogging.log', mode='w')
+
+    #10MB handlers
+    file_handler = logging.handlers.RotatingFileHandler('Logs/verbose_logs/TestLogging.log', maxBytes=10000000, backupCount=5)
     file_handler.setLevel(logging.DEBUG)
+    # Starts each call as a new log!
+    file_handler.doRollover()
 
     # Set the custom formatter
-    formatter = FixedWidthFormatter('%(levelname)s: %(asctime)s %(module)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S | ')
-    file_handler.setFormatter(formatter)
+    # formatter = FixedWidthFormatter('%(levelname)s: %(asctime)s %(module)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S | ')
+    # file_handler.setFormatter(formatter)
 
     # Add the handler to the logger
-    logging.basicConfig(level=logging.DEBUG, handlers=[file_handler])
+
+    handlers = []
+    filters = dict()
+    for i in range(3):
+        # Create file handler
+        file_handler_new = logging.FileHandler(f'Logs/TestLogging_{i}.log', mode='w')
+        file_handler_new.setLevel(logging.DEBUG)
+
+        # Add toggle filter
+        curr_filter = ExperimentFilter(False)
+        file_handler_new.addFilter(curr_filter)
+        filters[i] = curr_filter
+
+        handlers.append(file_handler_new)
+    print(f'filters: {filters}')
+
+
+    # logging.basicConfig(level=logging.DEBUG, handlers=[file_handler],
+    #                     format='%(levelname)-8s: %(asctime)-22s %(module)-20s %(message)s',
+    #                     datefmt='%Y-%m-%d %H:%M:%S | ')
+
+    logging.basicConfig(level=logging.DEBUG, handlers=handlers,
+                        format='%(levelname)-8s: %(asctime)-22s %(module)-20s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S | ')
+
+    multiprocessing_logging.install_mp_handler()
 
     logger.info('Started!')
     logger.warning(f'Test!')
-    logger.log(10, 'SLAAYYY')
+
+    filters[1].c = True
+    logger.warning(f'It passed!!!')
+
+    # lowest level above debug
+    # increments of 10: DEBUG, info, warn, etc.
+    logger.log(11, 'SLAAYYY')
+
+
+
+
     plot_gfp_stoch()
     logger.info('Completed!')

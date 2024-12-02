@@ -6,7 +6,7 @@ import pandas as pd
 import h5pandas as h5pd
 import main
 
-EXP_DIRECTORY = 'Trials/Paper_Extension/attempt63_1a.h5'
+EXP_DIRECTORY = 'Trials/Paper_Extension/attempt103_1b.h5'
 
 def parse_params(name, reversed=True):
     """

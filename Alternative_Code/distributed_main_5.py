@@ -7,27 +7,12 @@ from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 import math
 import time
+import traceback
 import logging
-
 import multiprocessing
 
-# pip install numpy
-# pip install matplotlib
-# python -m pip install scipy
 logger = logging.getLogger(__name__)
 
-class CustomAdapter(logging.LoggerAdapter):
-    """
-    This example adapter expects the passed in dict-like object to have a
-    'connid' key, whose value in brackets is prepended to the log message.
-    """
-    def process(self, msg, kwargs):
-        p_id = multiprocessing.current_process()
-
-        return '[%s] %s' % (p_id.pid, msg), kwargs
-        # return '%(process)d %(message)s', kwargs
-
-adapter = CustomAdapter(logger)
 
 
 
@@ -50,22 +35,6 @@ def dYdt(t, Y, p):
     m3 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[3] ** p[4]) - Y[4] * (p[2] + p[3])
     p3 = Y[4] * p[1] - Y[5] * p[3]
     return [m1, p1, m2, p2, m3, p3]
-
-
-
-# reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
-# stoich_mat=[
-#     [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
-
-# Rows: m1, pf1, m2, pf2, m3, pf3
-# Shape: (6 x 12) 6 species, 12 reactions.
-# stoich_mat = np.array(stoich_mat)
-# n = 1000000
 
 
 
@@ -113,6 +82,8 @@ def calc_rate(x, p):
 
 
 
+
+
 def full_gillespie(rvf, stoich_mat, p, n, x0=None):
     """
     Performs entire Gillespie simulation
@@ -136,14 +107,9 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None):
     # Matrix to store time intervals
     tau = np.zeros((1, n))
 
-    timer = np.zeros((1, n+1))
-    # Total: 24459
-
     for i in range(n):
-        # s = time.perf_counter_ns()
         lamd = rvf(x[:, i], p)
         lamd_tot = sum(lamd)
-        # lamd_tot = np.sum(lamd)
         r_t = np.random.random()
         # Calculate time to next interval
         T = -1 * math.log(r_t) / lamd_tot
@@ -163,14 +129,6 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None):
         # Update our stoich.
         x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
         tau[0, i] = T
-
-        # e = time.perf_counter_ns()
-        # print(f'time taken: {e - s}')
-        # timer[0, i] = e - s
-    # print(f'timer: {timer}')
-    # print(f'average: {np.average(timer)}')
-    # print(f'percentage of total time: {(np.average(timer) / 22000) * 100}')
-
     return t, x, tau
 
 
@@ -204,19 +162,6 @@ def resample(t, x, t_mean):
 
     return rt, rx
 
-
-
-# def autocorrelate(rt, rx):
-#     """
-#     Determines the autocorrelation of our concentrations and times.
-#     :param rt:
-#     :param rx:
-#     :return:
-#     """
-#     # rx[0, :] = rx[0, :] - np.mean(rx[0, :])
-#     # print(f'rx: {rx}')
-#     result = np.correlate(rx[0, :], rx[0, :], mode='full')
-#     return result[result.size//2:]
 
 
 def freq_amp_spec(rx, n_points):
@@ -264,14 +209,47 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     # var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
     # var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
     # std = math.sqrt(var)
-    std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+    try:
+        std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+    except KeyboardInterrupt as e:
+        print(f'quitting...')
+        raise Exception(KeyboardInterrupt) from e
+    except:
+        logger.warning(
+            f'----------------------------------------------------------------------------------------------------')
+        logger.exception(f'Error with calculating std! Will try to prevail...')
+        logger.warning(
+            f'----------------------------------------------------------------------------------------------------')
+
+        traceback.print_exc()
+        print(f'error with calculating std2! Will try to prevail...')
+        std2 = 0
+
     amp = max(power_spectrum_half[idx])
     mean2_index = np.argmax(power_spectrum_half[idx])
     mean_2 = freqs[mean2_index]
 
     # y_bell = gaussian(freqs[idx], amp, mean_2, std2)
-    popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
-                           method='dogbox')
+
+    try:
+        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
+                               method='dogbox')
+    except KeyboardInterrupt as e:
+        print(f'quitting...')
+        raise Exception(KeyboardInterrupt) from e
+    except:
+
+        logger.warning(
+            f'----------------------------------------------------------------------------------------------------')
+        logger.exception(f'Error with calculating popt! Will try to prevail...')
+        logger.warning(
+            f'----------------------------------------------------------------------------------------------------')
+
+        traceback.print_exc()
+        print(f'error with calculating popt! Will try to prevail...')
+        popt = [0.0, 0.0, 0.0]
+        # popt = (None, None, None)
+
     # y_bell_dog = gaussian(freqs[idx], *popt)
 
     pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
@@ -280,10 +258,28 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     indices_95 = np.where((cdf_freq >= 0.025) & (cdf_freq <= 0.975))[0]
     indices_68 = np.where((cdf_freq >= 0.16) & (cdf_freq <= 0.84))[0]
     indices_50 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
+    if len(indices_99) != 2:
+        logger.log(f'Unable to find two indices with 99 spread!')
+        logger.log(f'cdf_freq: {cdf_freq}')
+        indices_99 = [0, len(cdf_freq) - 1]
+    if len(indices_95) != 2:
+        logger.log(f'Unable to find two indices with 95 spread!')
+        logger.log(f'cdf_freq: {cdf_freq}')
+        indices_95 = [0, len(cdf_freq) - 1]
+    if len(indices_68) != 2:
+        logger.log(f'Unable to find two indices with 68 spread!')
+        logger.log(f'cdf_freq: {cdf_freq}')
+        indices_68 = [0, len(cdf_freq) - 1]
+    if len(indices_50) != 2:
+        logger.log(f'Unable to find two indices with 50 spread!')
+        logger.log(f'cdf_freq: {cdf_freq}')
+        indices_50 = [0, len(cdf_freq) - 1]
+
     min_index_99, max_index_99 = indices_99[0], indices_99[-1]
     min_index_95, max_index_95 = indices_95[0], indices_95[-1]
     min_index_68, max_index_68 = indices_68[0], indices_68[-1]
     min_index_50, max_index_50 = indices_50[0], indices_50[-1]
+
 
     spread_99 = freqs[max_index_99] - freqs[min_index_99]
     spread_95 = freqs[max_index_95] - freqs[min_index_95]
@@ -292,9 +288,7 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     # power = [power_spectrum, power_spectrum_half]
     power = power_spectrum_half
 
-    findings = [spread_99, spread_95, spread_68, spread_50, popt, std2, amp, mean_2]
-    adapter.info(f'Found findings!')
-    adapter.debug(f'Curring findings: {findings}')
+    findings = [spread_99, spread_95, spread_68, spread_50, *popt, std2, amp, mean_2]
 
     # plt.plot(freqs[idx], power_spectrum_half[idx])
     # plt.plot(freqs[idx], y_bell)
@@ -303,13 +297,6 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     # plt.legend(loc='upper left')
     #
     # plt.show()
-
-    # for d in range(n_reactants):
-    #     data_findings[d].append(ret[d])
-
-
-    # for d in range(n_reactants):
-    #     group.create_dataset(f'reactant_{d}', data=data_findings[d])
 
     return power, findings
 
@@ -349,13 +336,50 @@ def autocorrelate(rt, rx):
         ac_p += power
         stored_data.append([*findings])
 
-    print(f'stored_data: {stored_data}')
+    # print(f'stored_data: {stored_data}')
     power, findings = fourier_analysis(ac_p, n_points, rt)
     stored_data.append([*findings])
-    # plt.show()
     # len(stored_data) should be 1 + n_species
 
     return stored_data
+
+
+
+# def autocorrelate(rt, rx):
+#     """
+#     Determines the autocorrelation of our concentrations and times.
+#     MUST ALREADY BE RESAMPLED!!!
+#     :param rt:
+#     :param rx:
+#     :return:
+#     """
+#     n_points = rx.shape[1]
+#     n_species = rx.shape[0]
+#
+#     rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
+#     ac = np.zeros(2 * n_points, dtype=complex)
+#
+#
+#     for i in range(n_species):
+#         # for every species,,,
+#         frx = np.fft.fft(rx[i, :], n=2 * n_points)
+#         power_spectrum = frx * np.conj(frx)
+#
+#         ac += np.fft.ifft(power_spectrum)
+#
+#     ac = ac / n_species
+#     ac = np.fft.fftshift(ac)
+#     divisor = np.concatenate(([1], np.arange(1, n_points), np.arange(n_points, 0, -1)))
+#     ac = ac / divisor / np.std(rx) ** 2
+#     ac = np.fft.fftshift(ac)
+#
+#     ac_half = ac[:ac.size//2]
+#     ac_half = np.real(ac_half)
+#     return ac_half
+
+
+
+
 
 
 def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
@@ -392,8 +416,7 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
 
     # Adds parameters to p if they are given
     if p is None:
-        p = np.array([lambda_m, lambda_p, beta_m, beta_p, h, K, 10, 0.01])  # Parameter vector for ODE solver
-        # p = [lambda_m, lambda_p, beta_m, beta_p, h, K, 10, 0.01]
+        p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
     else:
         p = [lambda_m, lambda_p, beta_m, beta_p, h, K, *p]
 
@@ -403,15 +426,12 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
     if not stoich_mat:
         # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3, prod_P3, deg_P3
         stoich_mat = [
-            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
         # Rows: m1, pf1, m2, pf2, m3, pf3
         # Shape: (6 x 12) 6 species, 12 reactions.
@@ -419,19 +439,14 @@ def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_ma
 
     # Default values for x0_g if none given
     if x0_g is None:
-        x0_g = np.zeros((9, 1))
+        x0_g = np.zeros((6, 1))
         x0_g[0, 0] = 10
 
 
     # update calc_rate to take our constants as an input parameter
 
-    s = time.time()
-    print(f'starting gillespie')
     t, x, tau = full_gillespie(rvf, stoich_mat, p, num_iterations, x0_g)
-    e = time.time()
-    print(f'gillespie took {round(e - s, 2)}')
     rt, rx = resample(t[0, :], x, tau.mean())
-    print(f'resample took {round(time.time() - e, 2)}')
 
     save_data = autocorrelate(rt, rx)
     # offset = 100
@@ -473,121 +488,4 @@ def deterministic(Beta, alpha, t, h=None, K=None, ode=dYdt, p=None, x0=None):
     # p must be passed as a tuple
     sol = solve_ivp(ode, t_span=(0, max(t)), y0=x0, t_eval=t, args=(p,))
     return sol
-
-
-
-
-
-if __name__ == "__main__":
-    print(f'inside main')
-    # setup what x will be!
-    # x = np.linspace(0, 1, 100)
-    # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
-    t = np.linspace(0, 50, 1000)
-
-
-    # ODE Int more oldschool, uses Fortran
-    # solve_ivp more flexible
-
-    # sol = odeint(dSdx, y0=S_0, t=x, tfirst=True)
-    # [m1, P1, m2, P2, m3, P3]
-
-    # p1_sol = sol.y[1]
-    # p2_sol = sol.y[3]
-    # p3_sol = sol.y[5]
-    # t = sol.t
-
-    # first parameter is velocity
-    # print(sol_m1.T[0])
-
-    # print(sol)
-
-    # plt.plot(t, p1_sol)
-    # plt.plot(t, p2_sol)
-    # plt.plot(t, p3_sol)
-    # plt.ylabel('$v(t)$', fontsize=22)
-    # plt.xlabel('$t$', fontsize=22)
-
-    # plt.show()
-
-    print(f'')
-    print(f'down here')
-    # --------------------- Parameters for Gillespie ------------------------
-    beta_p = 1  # protein elimination rate
-    beta_m = 0.1 * (25 / math.log(2))  # mRNA elimination rate (25min protein half-life)
-
-    lambda_m = 4.1 * (25 / math.log(2))  # max transcription rate constant
-    lambda_p = 1.8 * (25 / math.log(2))  # Translation rate constant
-
-    h = 2  # Hill coefficient of cooperativity
-    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
-    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
-    # ---------------------------------------------------------------------
-
-
-    t, x, tau = full_gillespie(calc_rate, stoich_mat, p, 100000)
-    rt, rx = resample(t[0, :], x, tau.mean())
-
-    autoc = autocorrelate(rt, rx)
-    print(f'generated autoc')
-
-    print(f'autoc shape: {autoc.shape}')
-    print(f'auto correlation: {autoc}')
-    offset = 100
-    [peaks, locs] = find_peaks(autoc[offset:])
-    print(f'return: {find_peaks(autoc[offset:])}')
-    # [peaks, locs] = find_peaks(np.zeros(10))
-    print(f'peaks: {peaks}')
-    print(f'locs: {locs}')
-    if len(peaks) == 0:
-        # Unable to find any peaks
-        print(f'no peaks :(')
-        period = 0
-        precision = 0
-    else:
-        # Found some peaks!
-        print(f'peaks here')
-        print(f'peaks[0]: {peaks[0]}')
-        # print(f'periods: {rt[peaks]}')
-        period = rt[peaks[0]]
-        precision = autoc[peaks[0]]
-
-    print(f'period: {period}')
-    print(f'precision: {precision}')
-
-
-
-    p1_g = x[1, :]
-    # p2_g = x[3, :]
-    # p3_g = x[5, :]
-
-    # - Autocorrelation -
-    p1_r = rx[1, :]
-    t = t[0, :]
-    # plt.plot(rt, autoc)
-
-
-
-    # # print(f'p3_g: {p3_g}')
-    # # print(f't: {t}')
-    # plt.plot(t, p1_g)
-
-    # plt.plot(t, p2_g)
-    # plt.plot(t, p3_g)
-
-    # plt.plot(rt, p1_r)
-    # # Peaks will be slightly offset. Peaks is the period after 1 oscillation,
-    # # it might not start at the correct position!
-    # plt.scatter(rt[peaks], rx[1, peaks])
-
-    # - Display concentrations of Gillespie -
-    p1_r = rx[1, :]
-    p2_r = rx[3, :]
-    p3_r = rx[5, :]
-
-    plt.plot(rt, p1_r)
-    plt.plot(rt, p2_r)
-    plt.plot(rt, p3_r)
-
-    plt.show()
 

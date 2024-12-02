@@ -3,3 +3,4 @@ matplotlib
 scipy
 h5py
 h5pandas
+multiprocessing-logging
