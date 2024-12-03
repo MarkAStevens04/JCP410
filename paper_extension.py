@@ -782,28 +782,7 @@ def rvf_exp3a(x, p):
     alpha = p[6]
     beta = p[7]
 
-    h_generation = 5835
-    V_max = 1.2 * (10 ** 6)
-    K = 7.2 * (10 ** 17)
-    h_degrade = 82.6
-
-    a = 82.6
-    b = K * 82.6 + V_max - h_generation - alpha * x[7]
-    c = K * 14 - K * alpha * x[7]
-
-    a = -82.6
-    b = -1 * K * 82.6 + V_max + h_generation + alpha * x[7]
-    c = K * 14 + K * alpha * x[7]
-
-    # print(f'a: {a}, b: {b}, c: {c}')
-
-    # x[8] = (-1 * b + math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-    x[8] = (-1 * b - math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-    # print(f'x[8] first: {x[8]}')
-    # x[8] = (-1 * b - math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-    # print(f'x[8] second: {x[8]}')
-
-    # x[8] = x[7] * alpha + 75
+    x[8] = alpha * x[7] + 70
 
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h) + beta * x[8]
@@ -845,6 +824,8 @@ def rvf_exp3a(x, p):
     # prod_h = h_generation + stoich * x[7]
     # deg_h = h_degrade * x[8] + (x[8] * V_max) / (x[8] + K)
 
+
+
     prod_h = 0
     deg_h = 0
 
@@ -878,7 +859,7 @@ def exp3a_wrapper_stoch(plt, a=10):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3a, x0_g=x0_g, p=[a, 0.01])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 300000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3a, x0_g=x0_g, p=[a, 0.01])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1399,7 +1380,7 @@ if __name__ == "__main__":
 
 
     plot_gfp_stoch(0)
-    plot_gfp_stoch(100)
+    plot_gfp_stoch(10)
     plt.show()
 
 
