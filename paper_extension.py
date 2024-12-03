@@ -12,6 +12,7 @@ import re
 import logging
 import logging.handlers
 import multiprocessing_logging
+import math
 
 
 logger = logging.getLogger(__name__)
@@ -566,7 +567,7 @@ def rvf_exp2a(x, p):
     prod_p2 = lambda_p * x[2]
     deg_p2 = beta_p * x[3]
 
-    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + p[6] * x[8]
+    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h)
     deg_m3 = (beta_m + beta_p) * x[4] + x[8] * beta
 
     prod_p3 = lambda_p * x[4]
@@ -600,7 +601,7 @@ def rvf_exp2a(x, p):
 
 
 
-def exp2a_wrapper_stoch(plt):
+def exp2a_wrapper_stoch(plt, a=10):
     """
     Performs a run including gfp.
     Uses rvf_gfp
@@ -623,7 +624,7 @@ def exp2a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2a, x0_g=x0_g, p=[10, 0.0001])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2a, x0_g=x0_g, p=[a, 0.0001])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -681,7 +682,8 @@ def rvf_exp2b(x, p):
     prod_p2 = lambda_p * x[2]
     deg_p2 = beta_p * x[3]
 
-    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + p[6] * x[8]
+    # prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h) + p[6] * x[8]
+    prod_m3 = (lambda_m * K ** h) / (K ** h + x[3] ** h)
     deg_m3 = (beta_m + beta_p) * x[4] + x[8] * beta
 
     prod_p3 = lambda_p * x[4]
@@ -715,7 +717,7 @@ def rvf_exp2b(x, p):
 
 
 
-def exp2b_wrapper_stoch(plt):
+def exp2b_wrapper_stoch(plt, a=10):
     """
     Performs a run including gfp.
     Uses rvf_gfp
@@ -738,7 +740,7 @@ def exp2b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2b, x0_g=x0_g, p=[10, 0.0001])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp2b, x0_g=x0_g, p=[a, 0.0001])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -780,6 +782,29 @@ def rvf_exp3a(x, p):
     alpha = p[6]
     beta = p[7]
 
+    h_generation = 5835
+    V_max = 1.2 * (10 ** 6)
+    K = 7.2 * (10 ** 17)
+    h_degrade = 82.6
+
+    a = 82.6
+    b = K * 82.6 + V_max - h_generation - alpha * x[7]
+    c = K * 14 - K * alpha * x[7]
+
+    a = -82.6
+    b = -1 * K * 82.6 + V_max + h_generation + alpha * x[7]
+    c = K * 14 + K * alpha * x[7]
+
+    # print(f'a: {a}, b: {b}, c: {c}')
+
+    # x[8] = (-1 * b + math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+    x[8] = (-1 * b - math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+    # print(f'x[8] first: {x[8]}')
+    # x[8] = (-1 * b - math.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+    # print(f'x[8] second: {x[8]}')
+
+    # x[8] = x[7] * alpha + 75
+
 
     prod_m1 = (lambda_m * K**h) / (K**h + x[5] ** h) + beta * x[8]
     deg_m1 = (beta_m + beta_p) * x[0]
@@ -817,8 +842,11 @@ def rvf_exp3a(x, p):
     K = 7.2 * (10 ** 17)
     h_degrade = 82.6
 
-    prod_h = h_generation + stoich * x[7]
-    deg_h = h_degrade * x[8] + (x[8] * V_max) / (x[8] + K)
+    # prod_h = h_generation + stoich * x[7]
+    # deg_h = h_degrade * x[8] + (x[8] * V_max) / (x[8] + K)
+
+    prod_h = 0
+    deg_h = 0
 
     return [prod_m1, deg_m1, prod_p1, deg_p1, prod_m2, deg_m2, prod_p2, deg_p2,
             prod_m3, deg_m3, prod_p3, deg_p3, prod_m4, deg_m4, prod_p4, deg_p4,
@@ -827,7 +855,7 @@ def rvf_exp3a(x, p):
 
 
 
-def exp3a_wrapper_stoch(plt):
+def exp3a_wrapper_stoch(plt, a=10):
     """
     Performs a run including gfp.
     Uses rvf_gfp
@@ -850,7 +878,7 @@ def exp3a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3a, x0_g=x0_g, p=[10, 0.01])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3a, x0_g=x0_g, p=[a, 0.01])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -941,7 +969,7 @@ def rvf_exp3b(x, p):
 
 
 
-def exp3b_wrapper_stoch(plt):
+def exp3b_wrapper_stoch(plt, a=10):
     """
     Performs a run including gfp.
     Uses rvf_gfp
@@ -964,7 +992,7 @@ def exp3b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3b, x0_g=x0_g, p=[10, 1000])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp3b, x0_g=x0_g, p=[a, 1000])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1055,7 +1083,7 @@ def rvf_exp4a(x, p):
 
 
 
-def exp4a_wrapper_stoch(plt):
+def exp4a_wrapper_stoch(plt, a):
     """
     Performs a run including gfp.
     Uses rvf_gfp
@@ -1078,7 +1106,7 @@ def exp4a_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 10000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4a, x0_g=x0_g, p=[10, 0.1])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 10000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4a, x0_g=x0_g, p=[a, 0.1])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1192,7 +1220,7 @@ def exp4b_wrapper_stoch(plt):
 
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
     # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    rt, rx, peaks, autoc = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4b, x0_g=x0_g, p=[10, 1000])
+    rt, rx, save_data = main.single_pass(0.277, 380, 2, 1000000, K=7, stoich_mat=stoich_mat, rvf=rvf_exp4b, x0_g=x0_g, p=[10, 1000])
 
     # - Regular Graph -
     p1_r = rx[1, :]
@@ -1250,7 +1278,7 @@ def plot_gfp_det():
 
 
 
-def plot_gfp_stoch():
+def plot_gfp_stoch(a=10):
     """
     Create time trace graph from algorithm run.
     :return:
@@ -1261,12 +1289,12 @@ def plot_gfp_stoch():
     plt.figure(figsize=(8, 8))
     # h2o2_wrapper_stoch(plt)
     # gfp_wrapper_stoch(plt)
-    exp1a_wrapper_stoch(plt)
+    # exp1a_wrapper_stoch(plt)
     # exp1b_wrapper_stoch(plt)
-    # exp2a_wrapper_stoch(plt)
-    # exp2b_wrapper_stoch(plt)
-    # exp3a_wrapper_stoch(plt)
-    # exp3b_wrapper_stoch(plt)
+    # exp2a_wrapper_stoch(plt, a)
+    # exp2b_wrapper_stoch(plt, a)
+    exp3a_wrapper_stoch(plt, a)
+    # exp3b_wrapper_stoch(plt, a)
     # exp4a_wrapper_stoch(plt)
     # exp4b_wrapper_stoch(plt)
 
@@ -1285,7 +1313,7 @@ def plot_gfp_stoch():
     # - Autocorrelation graph -
     # plt.plot(rt, autoc)
 
-    plt.show()
+    # plt.show()
 
 
 
@@ -1370,5 +1398,9 @@ if __name__ == "__main__":
 
 
 
-    plot_gfp_stoch()
+    plot_gfp_stoch(0)
+    plot_gfp_stoch(100)
+    plt.show()
+
+
     logger.info('Completed!')

@@ -264,23 +264,50 @@ def fourier_analysis(power_spectrum_half, n_points, rt_adj):
     # var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
     # var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
     # std = math.sqrt(var)
-    std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+    try:
+        std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
+    except:
+        print(f'std did not converge...')
+        std2 = 0
     amp = max(power_spectrum_half[idx])
     mean2_index = np.argmax(power_spectrum_half[idx])
     mean_2 = freqs[mean2_index]
 
     # y_bell = gaussian(freqs[idx], amp, mean_2, std2)
-    popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
-                           method='dogbox')
+    try:
+        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std2],
+                               method='dogbox')
+    except:
+        print(f'popt did not converge...')
+        popt = (0, 0, 0)
     # y_bell_dog = gaussian(freqs[idx], *popt)
 
     pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
     cdf_freq = np.cumsum(pdf_freq)
-    indices_99 = np.where((cdf_freq >= 0.000000000000000005) & (cdf_freq <= 0.99999999999999999999999999999995))[0]
+    indices_99 = np.where((cdf_freq >= 0.005) & (cdf_freq <= 0.995))[0]
     indices_95 = np.where((cdf_freq >= 0.025) & (cdf_freq <= 0.975))[0]
     indices_68 = np.where((cdf_freq >= 0.16) & (cdf_freq <= 0.84))[0]
     indices_50 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
     print(f'indices_99 extended: {indices_99[:10000000]}')
+    if indices_99.size < 2:
+        logger.warning(f'Unable to find two indices with 99 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_99 = [0, 0]
+
+    if indices_95.size < 2:
+        logger.warning(f'Unable to find two indices with 95 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_95 = [0, 0]
+
+    if indices_68.size < 2:
+        logger.warning(f'Unable to find two indices with 68 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_68 = [0, 0]
+
+    if indices_50.size < 2:
+        logger.warning(f'Unable to find two indices with 50 spread! Setting to [0, 0]')
+        logger.info(f'cdf_freq: {cdf_freq[:20]}')
+        indices_50 = [0, 0]
 
     min_index_99, max_index_99 = indices_99[0], indices_99[-1]
     min_index_95, max_index_95 = indices_95[0], indices_95[-1]
