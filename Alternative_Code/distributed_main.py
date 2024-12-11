@@ -4,11 +4,7 @@ import scipy as sp
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
-from scipy.optimize import curve_fit
 import math
-# pip install numpy
-# pip install matplotlib
-# python -m pip install scipy
 
 # following tutorial
 # https://www.youtube.com/watch?v=MM3cBamj1Ms
@@ -17,11 +13,7 @@ import math
 # https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter22.06-Python-ODE-Solvers.html
 
 
-
-def dYdt(t, Y, p):
-    # p: (lambda_m, lambda_p, beta_m, beta_p, h, K)
-    # [m1, P1, m2, P2, m3, P3]
-    # print(p)
+def dYdt(t, Y):
     m1 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[5] ** p[4]) - Y[0] * (p[2] + p[3])
     p1 = Y[0] * p[1] - Y[1] * p[3]
     m2 = (p[0] * (p[5] ** p[4])) / (p[5] ** p[4] + Y[1] ** p[4]) - Y[2] * (p[2] + p[3])
@@ -32,19 +24,21 @@ def dYdt(t, Y, p):
 
 
 
+
+
 # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
-# stoich_mat=[
-#     [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+stoich_mat=[
+    [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
 # Rows: m1, pf1, m2, pf2, m3, pf3
 # Shape: (6 x 12) 6 species, 12 reactions.
-# stoich_mat = np.array(stoich_mat)
-# n = 1000000
+stoich_mat = np.array(stoich_mat)
+n = 1000000
 
 
 
@@ -58,7 +52,8 @@ def calc_rate(x, p):
     """
     # This is where you put in your RVF!
     # return a 1x12 matrix
-
+    # print(f'running rvf {x}')
+    # print(f'x at 0: {x[0]}')
     # POSSIBLE ERROR:
     # deg_m might be (beta_m * x[]) NOT (beta_m + beta_p) * x[]
     lambda_m = p[0]
@@ -94,44 +89,47 @@ def calc_rate(x, p):
 
 
 
-def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=40):
+def full_gillespie(rvf, stoich_mat, p, n):
     """
-    Performs entire Gillespie simulation
+
     :param x0: Column vector of initial conditions
     :param rvf: a rate-value function. Should be a function which takes array as input.
     :param stoich_mat: Matrix storing changes to each reaction
     :param n: Number of iterations
-    :param p: Parameters to feed to rvf
-    :return: t, x, tau (Time steps, concentration values, and delta-t for each timestep)
+    :return:
     """
-    if x0 is None:
-        x0 = np.zeros((6, 1))
-        x0[0, 0] = 10
-        # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
+    x0 = np.zeros((6, 1))
+    x0[0, 0] = 10
+    # x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
+    # print(f'x0: {x0}')
 
+
+    # print(f'running full gillespie')
 
     # Setup matrix to store our output data.
-    x = np.hstack([x0, np.zeros((x0.size, n * 10))])
+    x = np.hstack([x0, np.zeros((x0.size, n))])
     # Matrix to store times
-    t = np.zeros((1, (n*10)+1))
+    t = np.zeros((1, n+1))
     # Matrix to store time intervals
-    tau = np.zeros((1, (n*10)))
+    tau = np.zeros((1, n))
 
-    # for i in range(n):
-    i = 0
-    while t[0, i] < min_time:
+    for i in range(n):
+        # print(i)
         lamd = rvf(x[:, i], p)
         lamd_tot = np.sum(lamd)
         r_t = np.random.random()
         # Calculate time to next interval
         T = -1 * math.log(r_t) / lamd_tot
+        # print(f'T: {T}')
 
         # normalize lamd btwn 0 and 1
         lamd = lamd/lamd_tot
         # make lamd a cumulative sum ([0.7, 0.1, 0.2] -> [0.7, 0.8, 1.0])
         # Find which reaction rate has been picked!
         lamd = np.cumsum(lamd)
+        # print(f'lamd: {lamd}')
         r = np.random.random()
+        # print(f'r: {r}')
         I = 0
         while lamd[I] < r:
             I += 1
@@ -139,17 +137,12 @@ def full_gillespie(rvf, stoich_mat, p, n, x0=None, min_time=40):
         # Update our time!
         t[0, i+1] = t[0, i] + T
         # Update our stoich.
+        # print(f'stoich mat: {stoich_mat}')
+        # print(f'selected: {stoich_mat[:, I]}')
+        # print(f'pre: {x}')
         x[:, i+ 1] = x[:, i] + stoich_mat[:, I]
         tau[0, i] = T
-
-        i += 1
-
-    # print(f'cutting off: {t[0, i+1:]}')
-    # print(f'cutting off: {x[:, i + 1:]}')
-    # print(f'cutting off: {tau[0, i + 1:]}')
-    t = t[:, :i+1]
-    x = x[:, :i+1]
-    tau = tau[:, :i]
+        # print(f'post: {x}')
     return t, x, tau
 
 
@@ -196,13 +189,11 @@ def resample(t, x, t_mean):
 #     # print(f'rx: {rx}')
 #     result = np.correlate(rx[0, :], rx[0, :], mode='full')
 #     return result[result.size//2:]
-def gaussian(x, amplitude, mean, stddev):
-    return amplitude * np.exp(-((x - mean)**2) / (2 * stddev**2))
+
 
 def autocorrelate(rt, rx):
     """
     Determines the autocorrelation of our concentrations and times.
-    MUST ALREADY BE RESAMPLED!!!
     :param rt:
     :param rx:
     :return:
@@ -212,102 +203,14 @@ def autocorrelate(rt, rx):
 
     rx = rx - np.mean(rx, axis=1)[:, np.newaxis]
     ac = np.zeros(2 * n_points, dtype=complex)
-    ac_p = np.zeros(2 * n_points, dtype=complex)
 
-    stored_data = []
 
     for i in range(n_species):
         # for every species,,,
-        # Helpful stack overflow
-        # https://stackoverflow.com/questions/15382076/plotting-power-spectrum-in-python
-        # frx = np.fft.fft(rx[i, :], n=2 * n_points)
         frx = np.fft.fft(rx[i, :], n=2 * n_points)
-
         power_spectrum = frx * np.conj(frx)
-        # power_spectrum_half = np.abs(np.real(frx[1:frx.size // 2])) ** 2
-        # power_spectrum_half = np.abs(frx[1000:frx.size // 2]) ** 2
-        power_spectrum_half = np.abs(frx) ** 2
-
-
-        rt_adj = rt[1000:frx.size // 2]
-        # rx_adj = rx[i, 1000:]
-        plt.figure(figsize=(6, 6))
-        time_step = rt_adj[2] - rt_adj[1]
-
-        freqs = np.fft.fftfreq(power_spectrum_half.size, time_step)
-        idx = np.argsort(freqs)[freqs.size // 2 + 1:freqs.size // 2 + 100]
-        avg = np.average(freqs[idx], weights=power_spectrum_half[idx])
-        var = np.average((freqs[idx] - avg) ** 2, weights=power_spectrum_half[idx])
-        var = var * sum(power_spectrum_half[idx]) / (sum(power_spectrum_half[idx]) - 1)
-        std = math.sqrt(var)
-        std2 = np.sqrt(np.cov(freqs[idx], aweights=power_spectrum_half[idx], ddof=0))
-        amp = max(power_spectrum_half[idx])
-        mean2_index = np.argmax(power_spectrum_half[idx])
-        mean_2 = freqs[mean2_index]
-
-        y_bell = gaussian(freqs[idx], amp, mean_2, std)
-        popt, pcov = curve_fit(gaussian, xdata=freqs[idx], ydata=power_spectrum_half[idx], p0=[amp, mean_2, std],
-                               method='dogbox')
-        y_bell_dog = gaussian(freqs[idx], *popt)
-
-        pdf_freq = power_spectrum_half[idx] / sum(power_spectrum_half[idx])
-        cdf_freq = np.cumsum(pdf_freq)
-        confidence = 0.05
-        indices_05 = np.where((cdf_freq >= 0.05) & (cdf_freq <= 0.95))[0]
-        indices_15 = np.where((cdf_freq >= 0.15) & (cdf_freq <= 0.85))[0]
-        indices_25 = np.where((cdf_freq >= 0.25) & (cdf_freq <= 0.75))[0]
-        min_index_05, max_index_05 = indices_05[0], indices_05[-1]
-        min_index_15, max_index_15 = indices_15[0], indices_15[-1]
-        min_index_25, max_index_25 = indices_25[0], indices_25[-1]
-
-        spread_05 = freqs[max_index_05] - freqs[min_index_05]
-        spread_15 = freqs[max_index_15] - freqs[min_index_15]
-        spread_25 = freqs[max_index_25] - freqs[min_index_25]
-
-        print(f'cum_sum cdf: {cdf_freq}')
-        print(f'spread_05: {spread_05}')
-        print(f'spread_15: {spread_15}')
-        print(f'spread_25: {spread_25}')
-
-
-
-        # print(f'popt: {popt}')
-        # print(f'pcov: {pcov}')
-        print(f'amp: {amp}')
-        print(f'mean_2: {mean_2}')
-
-        print(f'std2: {std2}')
-        print(f'std: {std}')
-        print(f'var: {var}')
-        print(f'avg: {avg}')
-        # idx = np.argsort(power_spectrum_half)
-        print(f'power spectrum shape: {power_spectrum_half}')
-        print(f'rt shape: {rt_adj.shape}')
-        # print(f'rx shape: {rx_adj.shape}')
-        print(f'time_step: {time_step}')
-        print(f'freqs: {freqs}')
-        print(power_spectrum_half[-10:])
-
-        # plt.plot(rt_adj, power_spectrum_half)
-        print(freqs[idx])
-        print(power_spectrum_half[idx])
-        print(idx)
-        print(f'---')
-        plt.plot(freqs[idx], power_spectrum_half[idx])
-        plt.plot(freqs[idx], y_bell)
-        plt.plot(freqs[idx], y_bell_dog, label='dog')
-
-        plt.legend(loc='upper left')
-
-        # plt.plot(rt_adj, power_spectrum_half)
-
-        plt.show()
 
         ac += np.fft.ifft(power_spectrum)
-        ac_p += power_spectrum_half
-        stored_data.append([spread_05, spread_15, spread_25, popt, std2, amp, mean_2])
-    print(f'stored_data: {stored_data}')
-    plt.plot(freqs[idx], power_spectrum_half[idx])
 
     ac = ac / n_species
     ac = np.fft.fftshift(ac)
@@ -317,10 +220,6 @@ def autocorrelate(rt, rx):
 
     ac_half = ac[:ac.size//2]
     ac_half = np.real(ac_half)
-
-    plt.plot(rt, ac_half)
-    plt.show()
-
     return ac_half
 
 
@@ -328,112 +227,78 @@ def autocorrelate(rt, rx):
 
 
 
-def single_pass(Beta, alpha, h, num_iterations, K=None, rvf=calc_rate, stoich_mat=None, x0_g=None, p=None):
+def single_pass(Beta, alpha, Hill, num_iterations):
     """
     Performs a single pass of Gillespie Simulation!
-    Calculates peaks and autocorrelation
-    :param Beta: Degradation ratio (protein elimination rate / mRNA elimination rate)
-    :param alpha: Creation / Elimination ratio
-    :param Hill: Hill coefficient of cooperativity
-    :param num_iterations: Number of iterations for our simulation to run
-    :param rvf: Rate-Vector function (Gillespie rvf)
-    :param stoich_mat: Stoichiometric matrix for rvf
-    :param x0_g: initial conditions
-    :return: rt, rx, peaks, autoc
+    :param Beta:
+    :param alpha:
+    :return:
     """
     beta_p = 1  # protein elimination rate
     # Implicity math.log is ln
     # beta_m = 0.1 * (25 / math.log(2))
     beta_m = 1 / Beta
-    h = h  # Hill coefficient of cooperativity (default is 2)
-    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    # *** NOTE: H should be set to 2, but is set to 1 by default!! ***
-    if K is None:
-        K = 7  # Repression threshold (when 1/2 of all repressors are bound)
+    h = 2  # Hill coefficient of cooperativity
+    K = 7  # Repression threshold (when 1/2 of all repressors are bound)
 
     c = 4.8/1.8
     lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c)
     lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c)
+    # print(f'lambda_p: {lambda_p}')
+    # print(f'lambda_m: {lambda_m}')
+
 
 
     # lambda_m = 4.1 * (25 / math.log(2))  # max transcription rate constant
     # lambda_p = 1.8 * (25 / math.log(2))  # Translation rate constant
 
-    # Adds parameters to p if they are given
-    if p is None:
-        p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
-    else:
-        p = [lambda_m, lambda_p, beta_m, beta_p, h, K, *p]
+    p = [lambda_m, lambda_p, beta_m, beta_p, h, K]  # Parameter vector for ODE solver
 
     # alpha = lambda_p * lambda_m / (beta_m * beta_p * k)
 
-    # Default values for stoich_mat if none given
-    if not stoich_mat:
-        # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3, prod_P3, deg_P3
-        stoich_mat = [
-            [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
+    # reactions: prod_m1, deg_m1, prod_P1, deg_P1, prod_m2, deg_m2, prod_P2, deg_P2, prod_m3, deg_m3,prod_P3, deg_P3
+    stoich_mat = [
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1]]
 
-        # Rows: m1, pf1, m2, pf2, m3, pf3
-        # Shape: (6 x 12) 6 species, 12 reactions.
+    # Rows: m1, pf1, m2, pf2, m3, pf3
+    # Shape: (6 x 12) 6 species, 12 reactions.
     stoich_mat = np.array(stoich_mat)
 
-    # Default values for x0_g if none given
-    if x0_g is None:
-        x0_g = np.zeros((6, 1))
-        x0_g[0, 0] = 10
+    x0_g = np.zeros((6, 1))
+    x0_g[0, 0] = 10
 
 
     # update calc_rate to take our constants as an input parameter
 
-    t, x, tau = full_gillespie(rvf, stoich_mat, p, num_iterations, x0_g)
+    t, x, tau = full_gillespie(calc_rate, stoich_mat, p, num_iterations)
     rt, rx = resample(t[0, :], x, tau.mean())
 
     autoc = autocorrelate(rt, rx)
     offset = 100
     [peaks, locs] = find_peaks(autoc[offset:])
 
+    if len(peaks) == 0:
+        # Unable to find any peaks
+        print(f'no peaks :(')
+        period = 0
+        precision = 0
+    else:
+        # Found some peaks!
+        # print(f'periods: {rt[peaks]}')
+        period = rt[peaks[0]]
+        precision = autoc[peaks[0]]
+
+
     return rt, rx, peaks, autoc
 
 
 
 
-def deterministic(Beta, alpha, t, h=None, K=None, ode=dYdt, p=None, x0=None):
-    """
-    Run one deterministic pass
-    :return:
-    """
-    beta_p = 1  # protein elimination rate
-    beta_m = 1 / Beta # mRNA elimination rate (25min protein half-life)
-
-    # Default values of h and k
-    if h is None:
-        h = 2  # Hill coefficient of cooperativity
-    if K is None:
-        K = 7  # Repression threshold (when 1/2 of all repressors are bound)
-
-    c = 4.8 / 1.8
-    lambda_p = math.sqrt((alpha * beta_p * beta_m * K) / c) # Translation rate constant
-    lambda_m = math.sqrt((alpha * beta_p * beta_m * K) * c) # max transcription rate constant
-
-    # Adds given parameters p to solver
-    if not p:
-        p = (lambda_m, lambda_p, beta_m, beta_p, h, K)  # Parameter vector for ODE solver
-    else:
-        p = (lambda_m, lambda_p, beta_m, beta_p, h, K, *p)
-
-    # Default value of x0, otherwise can be specified
-    if not x0:
-        x0 = [10, 0, 0, 0, 0, 0]  # [m1, P1, m2, P2, m3, P3]
-
-    # p must be passed as a tuple
-    sol = solve_ivp(ode, t_span=(0, max(t)), y0=x0, t_eval=t, args=(p,))
-    return sol
 
 
 
