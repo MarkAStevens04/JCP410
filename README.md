@@ -1,9 +1,7 @@
 **The paper associated with this project is located in** `Final Paper.pdf`.
 
 # Overview
-This is the GitHub repository for my independent project course "JCP410 - Modelling of Biochemical Systems". 
-
-**The paper associated with this project is located in** `Final Paper.pdf`. 
+This is the GitHub repository for my independent project course "JCP410 - Modelling of Biochemical Systems". The goal of this project was to replicate existing simulations of the Repressilator Synthetic Biology circuit, and extend these existing results by investigating the confouding role of our reporter _GFP_. This simulation investigated 4 different possible protein interactions with 2 different reaction rates each, for a total of 8 experiments. I used a fourier-transform to characterize the noise created by each of these systems, and a hyperparameter scan to delliniate the exact parameter regimes under which our repressilator system would become unstable.
 
 
 # How Modules Fit Together
