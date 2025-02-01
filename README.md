@@ -1,3 +1,5 @@
+**The paper associated with this project is located in** `Final Paper.pdf`.
+
 # Overview
 This is the GitHub repository for my independent project course "JCP410 - Modelling of Biochemical Systems". 
 
