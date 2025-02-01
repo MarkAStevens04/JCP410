@@ -1,3 +1,10 @@
+# Overview
+This is the GitHub repository for my independent project course "JCP410 - Modelling of Biochemical Systems".
+
+The final paper is located in `Final Paper.pdf`
+
+
+
 # How Modules Fit Together
 `Paper_extension.py` holds our gillespie simulation functions, and is the actual “experiment”. We use main.py to run our experiment and perform our data analysis. We use single_pass() as a harness to tell handle the experiment and gillespie simulation. The function full_gillespie() in main.py is what iterates through our RVF. Autocorrelate performs our data analysis (fast fourier transform). We then return the attributes we have received for that single trial.
 
